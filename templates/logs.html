@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DLP Secure - Activity Logs</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Toast Notification Styling */
+        #ui-toast { display:none; position:fixed; bottom:20px; right:20px; background:#2c3e50; color:white; padding:15px 25px; border-radius:5px; z-index:9999; box-shadow:0 2px 10px rgba(0,0,0,0.2); }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <i class="fas fa-shield-alt logo-icon"></i>
+                <span class="logo-text">DLP Secure</span>
+            </div>
+            <nav class="sidebar-nav">
+                <ul>
+                    <li><a href="/"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+                    <li><a href="/threat"><i class="fas fa-user-shield"></i> Threat Analytics</a></li>
+                    <li><a href="/policy"><i class="fas fa-th-list"></i> Policy Management</a></li>
+                    <li><a href="/encryption"><i class="fas fa-lock"></i> Encryption Control</a></li>
+                    <li><a href="/incident"><i class="fas fa-exclamation-triangle"></i> Incident Response</a></li>
+                    <li><a href="/reports"><i class="fas fa-chart-bar"></i> Reports</a></li>
+                    <li class="active"><a href="/logs"><i class="fas fa-file-alt"></i> Activity Logs</a></li>
+                </ul>
+            </nav>
+            <div class="sidebar-footer">
+                <ul>
+                    <li><a href="/settings"><i class="fas fa-cog"></i> Settings</a></li>
+                    <li><a href="/support"><i class="fas fa-headset"></i> Support</a></li>
+                </ul>
+            </div>
+        </aside>
+
+        <div class="main-wrapper">
+            <main class="content-area">
+                <div id="ui-toast"><span id="toast-message"></span></div>
+
+                <div class="page-title-section">
+                    <h1>Activity Logs</h1>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3>System Event Logs</h3>
+                        <div class="action-buttons" style="flex-direction: row;">
+                            <button class="btn btn-blue-outline" onclick="exportLogs()">
+                                <i class="fas fa-download"></i> Export CSV
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <table class="policy-table">
+                            <thead>
+                                <tr>
+                                    <th>Timestamp</th>
+                                    <th>User</th>
+                                    <th>Action</th>
+                                    <th>Source</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                </tbody>
+                        </table>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        // Load data on page load
+        fetch('/api/logs/all')
+            .then(response => response.json())
+            .then(data => {
+                const tbody = document.querySelector('tbody');
+                tbody.innerHTML = '';
+                data.forEach(log => {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${log.time}</td>
+                            <td>${log.user}</td>
+                            <td>${log.activity}</td>
+                            <td>${log.source}</td>
+                            <td><span class="${log.status === 'blocked' ? 'status-red' : 'status-green'}">${log.status}</span></td>
+                        </tr>
+                    `;
+                });
+            });
+
+        // Export Function without alert()
+        async function exportLogs() {
+            const toast = document.getElementById('ui-toast');
+            const msg = document.getElementById('toast-message');
+            
+            msg.textContent = "Exporting audit trail...";
+            toast.style.display = 'flex';
+
+            try {
+                const response = await fetch('/api/logs/export');
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = "security_logs.csv";
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    
+                    msg.textContent = "Audit Trail Exported Successfully!";
+                } else {
+                    msg.textContent = "Export failed!";
+                }
+            } catch (error) {
+                msg.textContent = "Error during export.";
+            }
+
+            setTimeout(() => { toast.style.display = 'none'; }, 3000);
+        }
+    </script>
+</body>
+</html>

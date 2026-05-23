@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DLP Secure - Encryption Control</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* CSS base structures matching your system theme precisely */
+        .app-container {
+            display: flex;
+            min-height: 100vh;
+            width: 100%;
+        }
+
+        .main-wrapper {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: #f8fafc;
+            overflow-y: auto;
+        }
+
+        .top-nav {
+            height: 60px;
+            background-color: #1e293b;
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            padding: 0 30px;
+        }
+
+        .notif-icon {
+            color: #fff;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .notif-badge {
+            position: absolute;
+            top: -5px;
+            right: -7px;
+            background-color: #ef4444;
+            color: white;
+            font-size: 0.65rem;
+            padding: 2px 5px;
+            border-radius: 50%;
+        }
+
+        .content-area {
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 30px;
+            box-sizing: border-box;
+        }
+
+        .page-title-section {
+            text-align: center;
+            margin-bottom: 35px;
+        }
+
+        .page-title-section h1 {
+            font-size: 2rem;
+            color: #1e3a5f;
+            margin: 0 0 8px 0;
+        }
+
+        .page-title-section p {
+            color: #64748b;
+            margin: 0;
+            font-size: 1rem;
+        }
+
+        .encryption-settings-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 25px;
+            align-items: start;
+        }
+
+        .card {
+            background: #fff;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03);
+            overflow: hidden;
+        }
+
+        .card-header {
+            background-color: #f8fafc;
+            padding: 15px 20px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .card-header h3 {
+            margin: 0;
+            font-size: 1.05rem;
+            color: #1e3a5f;
+            font-weight: 600;
+        }
+
+        .card-body {
+            padding: 25px 20px;
+        }
+
+        .card-body p.meta {
+            color: #64748b;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            margin: 0 0 20px 0;
+        }
+
+        .violations-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .violations-list li {
+            padding: 10px 0;
+            font-size: 0.9rem;
+            color: #334155;
+        }
+
+        .violations-list li i.fa-folder {
+            margin-right: 8px;
+            color: #fbbf24;
+        }
+
+        .email-details-block {
+            margin-bottom: 25px;
+            color: #334155;
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        /* Buttons Styling */
+        .btn {
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: 500;
+            font-size: 0.9rem;
+            cursor: pointer;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-blue {
+            background-color: #1d4ed8;
+            color: #fff;
+        }
+
+        .btn-blue:hover {
+            background-color: #1e40af;
+        }
+
+        .btn-outline {
+            background: #e2e8f0;
+            color: #334155;
+        }
+
+        .btn-outline:hover {
+            background-color: #cbd5e1;
+        }
+
+        /* Modal Overlay Backdrop */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.4);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* PICTURE 1: Confirmation Modal Custom Styling */
+        .confirm-card {
+            width: 400px;
+            background: #fff;
+            padding: 30px 25px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+            text-align: center;
+            box-sizing: border-box;
+        }
+
+        .confirm-icon-wrapper {
+            font-size: 3.2rem;
+            color: #3b82f6;
+            margin-bottom: 15px;
+            display: block;
+        }
+
+        .confirm-card h3 {
+            margin: 0 0 12px 0;
+            color: #1e3a5f;
+            font-size: 1.3rem;
+            font-weight: 600;
+        }
+
+        .confirm-card p {
+            color: #64748b;
+            font-size: 0.95rem;
+            margin: 0 0 25px 0;
+            line-height: 1.5;
+        }
+
+        .confirm-actions {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+        }
+
+        .confirm-actions .btn {
+            min-width: 100px;
+            padding: 10px 20px;
+        }
+
+        /* PICTURE 2: Elegant Toast Notification Styling */
+        #toastContainer {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .toast-box {
+            background-color: #fff;
+            color: #334155;
+            padding: 14px 18px;
+            border-radius: 6px;
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+            border-left: 4px solid #22c55e;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 340px;
+            max-width: 450px;
+            font-size: 0.9rem;
+            opacity: 0;
+            transform: translateY(-15px);
+            transition: all 0.30s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .toast-box.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <i class="fas fa-shield-alt logo-icon"></i>
+                <span class="logo-text">DLP Secure</span>
+            </div>
+            <nav class="sidebar-nav">
+                <ul>
+                    <li><a href="/"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+                    <li><a href="/threat"><i class="fas fa-user-shield"></i> Threat Analytics</a></li>
+                    <li><a href="/policy"><i class="fas fa-th-list"></i> Policy Management</a></li>
+                    <li class="active"><a href="/encryption"><i class="fas fa-lock"></i> Encryption Control</a></li>
+                    <li><a href="/incident"><i class="fas fa-exclamation-triangle"></i> Incident Response</a></li>
+                    <li><a href="/reports"><i class="fas fa-chart-bar"></i> Reports</a></li>
+                    <li><a href="/logs"><i class="fas fa-file-alt"></i> Activity Logs</a></li>
+                </ul>
+            </nav>
+            <div class="sidebar-footer">
+                <ul>
+                    <li><a href="/settings"><i class="fas fa-cog"></i> Settings</a></li>
+                    <li><a href="/support"><i class="fas fa-headset"></i> Support</a></li>
+                </ul>
+            </div>
+        </aside>
+
+        <div class="main-wrapper">
+            <header class="top-nav">
+                <div class="notif-icon">
+                    <i class="fas fa-bell"></i>
+                    <span class="notif-badge">1</span>
+                </div>
+            </header>
+
+            <main class="content-area">
+                <div class="page-title-section">
+                    <h1>Encryption Control</h1>
+                </div>
+
+                <div class="encryption-settings-grid">
+                    <div class="card">
+                        <div class="card-header"><h3>Folder Encryption</h3></div>
+                        <div class="card-body">
+                            <p class="meta">Automatically encrypt all documents in the following sensitive system directories.</p>
+                            <ul class="violations-list" id="folderList">
+                                <li>
+                                    <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                                        <span><i class="fas fa-folder"></i> C:\Users\Finance\Reports</span>
+                                        <i class="fas fa-trash-alt delete-folder-btn" style="cursor: pointer; color: #ef4444;" onclick="removeFolderElement(this)"></i>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                                        <span><i class="fas fa-folder"></i> C:\Users\HR\Sensitive</span>
+                                        <i class="fas fa-trash-alt delete-folder-btn" style="cursor: pointer; color: #ef4444;" onclick="removeFolderElement(this)"></i>
+                                    </div>
+                                </li>
+                            </ul>
+                            <button class="btn btn-blue" id="addFolderBtn" style="margin-top: 25px;">+ Add Folder</button>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header"><h3>Email Encryption</h3></div>
+                        <div class="card-body">
+                            <p class="meta">Global encryption rules for outbound communications containing PII.</p>
+                            
+                            <div class="email-details-block">
+                                Encryption Standard: <strong>AES-256 GCM</strong><br>
+                                Key Management: <span style="color: #64748b;">Cloud KMS (Active)</span>
+                            </div>
+
+                            <button class="btn btn-blue" id="manageKeysBtn" style="margin-top: 10px;">Manage Keys</button>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <div id="folderModalOverlay" class="modal-overlay">
+        <div class="card" style="width: 450px; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.15);">
+            <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 20px; background: transparent;">
+                <h3 style="margin: 0; color: #1e3a5f;">Monitor & Encrypt New Folder</h3>
+                <i class="fas fa-times" id="closeFolderModal" style="cursor: pointer; color: #aaa;"></i>
+            </div>
+            <form id="folderConfigForm">
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; font-weight: 600; margin-bottom: 8px; font-size: 0.9rem; color: #334155;">Directory Path</label>
+                    <input type="text" id="folderPathInput" required placeholder="e.g., C:\Users\Admin\Documents\Secure" style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; box-sizing: border-box;">
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                    <button type="button" id="cancelFolderModal" class="btn" style="background:#cbd5e1; color:#334155;">Cancel</button>
+                    <button type="submit" class="btn btn-blue">Add Directory</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="keyConfirmModalOverlay" class="modal-overlay">
+        <div class="confirm-card">
+            <div class="confirm-icon-wrapper">
+                <i class="fas fa-sync-alt fa-spin-hover"></i>
+            </div>
+            <h3>Rotate Keys Console</h3>
+            <p>Would you like to rotate and sync your AES-256 master keys with Cloud KMS?</p>
+            <div class="confirm-actions">
+                <button type="button" id="cancelKeyConfirmBtn" class="btn btn-outline">Cancel</button>
+                <button type="button" id="proceedKeyConfirmBtn" class="btn btn-blue">Proceed</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toastContainer"></div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Unbind native configurations to keep app windows safe
+            window.alert = function() { return true; };
+            window.prompt = function() { return null; };
+            
+            // DOM Hook Points
+            const folderModal = document.getElementById('folderModalOverlay');
+            const addFolderBtn = document.getElementById('addFolderBtn');
+            const closeFolderModal = document.getElementById('closeFolderModal');
+            const cancelFolderModal = document.getElementById('cancelFolderModal');
+            const folderConfigForm = document.getElementById('folderConfigForm');
+            const folderList = document.getElementById('folderList');
+
+            const keyConfirmModal = document.getElementById('keyConfirmModalOverlay');
+            const manageKeysBtn = document.getElementById('manageKeysBtn');
+            const cancelKeyConfirmBtn = document.getElementById('cancelKeyConfirmBtn');
+            const proceedKeyConfirmBtn = document.getElementById('proceedKeyConfirmBtn');
+            const toastContainer = document.getElementById('toastContainer');
+
+            // ==========================================
+            // FOLDER MANAGEMENT LOGIC
+            // ==========================================
+            addFolderBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                folderModal.style.display = 'flex';
+            });
+
+            function closeFolder() {
+                folderModal.style.display = 'none';
+                folderConfigForm.reset();
+            }
+
+            closeFolderModal.addEventListener('click', closeFolder);
+            cancelFolderModal.addEventListener('click', closeFolder);
+
+            folderConfigForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const pathValue = document.getElementById('folderPathInput').value.trim();
+                if(pathValue) {
+                    const li = document.createElement('li');
+                    li.innerHTML = `
+                        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                            <span><i class="fas fa-folder"></i> ${pathValue}</span>
+                            <i class="fas fa-trash-alt delete-folder-btn" style="cursor: pointer; color: #ef4444;" onclick="removeFolderElement(this)"></i>
+                        </div>
+                    `;
+                    folderList.appendChild(li);
+                    closeFolder();
+                }
+            });
+
+            window.removeFolderElement = function(element) {
+                element.closest('li').remove();
+            };
+
+            // ==========================================
+            // PICTURE 1 & 2: MANAGE KEYS MODAL & TOAST FLOW
+            // ==========================================
+            
+            // Step 1: Click Manage Keys -> Open Confirmation Modal Box (Picture 1)
+            manageKeysBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                keyConfirmModal.style.display = 'flex';
+            });
+
+            // Close function for Key Modal
+            function closeKeyConfirmModal() {
+                keyConfirmModal.style.display = 'none';
+            }
+
+            cancelKeyConfirmBtn.addEventListener('click', closeKeyConfirmModal);
+
+            // Step 2: Click Proceed -> Launch Success Toast and close Modal (Picture 2)
+            proceedKeyConfirmBtn.addEventListener('click', function() {
+                closeKeyConfirmModal(); // Sinasara ang Confirmation modal box
+                triggerSuccessToast("Encryption keys successfully rotated and deployed to active runtimes."); // Pinapakita ang notification box
+            });
+
+            // Function dynamically spawning the custom green toast (Picture 2)
+            function triggerSuccessToast(message) {
+                const toast = document.createElement('div');
+                toast.className = 'toast-box';
+                toast.innerHTML = `
+                    <i class="fas fa-check-circle" style="color: #22c55e; font-size: 1.2rem;"></i>
+                    <div style="flex: 1; line-height: 1.4; font-weight: 500; font-size: 0.9rem; color: #334155;">${message}</div>
+                    <i class="fas fa-times" style="color: #cbd5e1; cursor: pointer; margin-left: 8px;" onclick="this.parentElement.remove()"></i>
+                `;
+                
+                toastContainer.appendChild(toast);
+                
+                // Triggers structural transition fade-in
+                setTimeout(() => {
+                    toast.classList.add('show');
+                }, 50);
+
+                // Auto dismiss timer rule (mawawala matapos ang 4 seconds)
+                setTimeout(() => {
+                    toast.classList.remove('show');
+                    setTimeout(() => {
+                        toast.remove();
+                    }, 300);
+                }, 4000);
+            }
+
+            // Global backdrop controller for safety clicks
+            window.addEventListener('click', function(e) {
+                if (e.target === folderModal) closeFolder();
+                if (e.target === keyConfirmModal) closeKeyConfirmModal();
+            });
+        });
+    </script>
+</body>
+</html>

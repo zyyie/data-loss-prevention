@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DLP Secure - Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Structural CSS para mapanatiling sentro at boxed ang website nang hindi binabago ang system colors */
+        .main-wrapper {
+            max-width: 1350px;
+            /* Nilagyan ng sapat na max-width para hindi mag-stretch nang todo */
+            margin: 0 auto;
+            /* Isinesentro ang buong wrapper sa screen */
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .page-title-section {
+            text-align: center;
+            /* Ginawang center alignment para sa title at description */
+            margin-bottom: 30px;
+        }
+
+        .page-title-section p {
+            margin: 8px auto 0 auto;
+            max-width: 850px;
+            line-height: 1.5;
+        }
+
+        .stat-cards-grid,
+        .middle-grid,
+        .bottom-grid {
+            max-width: 1300px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <i class="fas fa-shield-alt logo-icon"></i>
+                <span class="logo-text">DLP Secure</span>
+            </div>
+            <nav class="sidebar-nav">
+                <ul>
+                    <li class="active"><a href="/"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+                    <li><a href="/threat"><i class="fas fa-user-shield"></i> Threat Analytics</a></li>
+                    <li><a href="/policy"><i class="fas fa-th-list"></i> Policy Management</a></li>
+                    <li><a href="/encryption"><i class="fas fa-lock"></i> Encryption Control</a></li>
+                    <li><a href="/incident"><i class="fas fa-exclamation-triangle"></i> Incident Response</a></li>
+                    <li><a href="/reports"><i class="fas fa-chart-bar"></i> Reports</a></li>
+                    <li><a href="/logs"><i class="fas fa-file-alt"></i> Activity Logs</a></li>
+                </ul>
+            </nav>
+            <div class="sidebar-footer">
+                <ul>
+                    <li><a href="/settings"><i class="fas fa-cog"></i> Settings</a></li>
+                    <li><a href="/support"><i class="fas fa-headset"></i> Support</a></li>
+                </ul>
+            </div>
+        </aside>
+
+        <div class="main-wrapper">
+            <header class="top-nav">
+                <div class="top-nav-actions">
+                    <div class="notification-icon">
+                        <i class="fas fa-bell"></i>
+                        <span class="badge">1</span>
+                    </div>
+                </div>
+            </header>
+
+            <main class="content-area">
+                <div class="page-title-section">
+                    <h1>Data Loss Prevention System</h1>
+                </div>
+
+                <div class="stat-cards-grid">
+                    <div class="stat-card-mini">
+                        <div class="card-icon blue"><i class="fas fa-file-invoice"></i></div>
+                        <div class="card-info">
+                            <span class="label">Files Secured</span>
+                            <span class="value" id="filesSecured">--</span>
+                        </div>
+                    </div>
+                    <div class="stat-card-mini">
+                        <div class="card-icon red"><i class="fas fa-shield-virus"></i></div>
+                        <div class="card-info">
+                            <span class="label">Threats Blocked</span>
+                            <span class="value" id="threatsBlocked">--</span>
+                        </div>
+                    </div>
+                    <div class="stat-card-mini">
+                        <div class="card-icon dark-blue"><i class="fas fa-bell"></i></div>
+                        <div class="card-info">
+                            <span class="label">Incidents Detected</span>
+                            <span class="value" id="incidentsDetected">--</span>
+                        </div>
+                    </div>
+                    <div class="stat-card-mini">
+                        <div class="card-icon green"><i class="fas fa-check-circle"></i></div>
+                        <div class="card-info">
+                            <span class="label">Compliance Status</span>
+                            <span class="value green" id="complianceStatus">--</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="middle-grid">
+                    <div class="card chart-card">
+                        <div class="card-header">
+                            <h3>Threat Analytics</h3>
+                            <i class="fas fa-times close-icon"></i>
+                        </div>
+                        <div class="card-body">
+                            <p class="chart-subtitle">Threats Detected</p>
+                            <div class="line-chart-container">
+                                <canvas id="threatLineChart"></canvas>
+                            </div>
+                            <div class="threat-stats-row">
+                                <div class="threat-stat red">
+                                    <span class="count">15</span>
+                                    <span class="label">Malware</span>
+                                </div>
+                                <div class="threat-stat orange">
+                                    <span class="count">9</span>
+                                    <span class="label">Phishing</span>
+                                </div>
+                                <div class="threat-stat yellow">
+                                    <span class="count">6</span>
+                                    <span class="label">Data Leaks</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card encryption-card">
+                        <div class="card-header">
+                            <h3>Encryption Status</h3>
+                        </div>
+                        <div class="card-body encryption-body">
+                            <div class="encryption-visual">
+                                <i class="fas fa-folder-open folder-icon"></i>
+                                <i class="fas fa-lock lock-overlay"></i>
+                            </div>
+                            <ul class="encryption-list">
+                                <li><span class="dot"></span> Files Encrypted: <strong>9,200</strong></li>
+                                <li><span class="dot"></span> Encryption Compliance: <strong
+                                        class="text-green">Active</strong></li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="card incident-card">
+                        <div class="card-header">
+                            <h3>Incident Response</h3>
+                        </div>
+                        <div class="card-body incident-body">
+                            <div class="incident-count-display">
+                                <span class="big-number" id="incidentBigCount">0</span>
+                                <span class="label">Incidents Detected</span>
+                            </div>
+                            <div class="action-buttons">
+                                <button class="btn btn-red" onclick="window.location.href='/incident'">View
+                                    Incidents</button>
+                                <button class="btn btn-blue" onclick="window.location.href='/threat'">Response
+                                    Actions</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bottom-grid">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Security Alerts</h3>
+                        </div>
+                        <div class="card-body">
+                            <ul class="alerts-list" id="alertsList">
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Policy Violations</h3>
+                        </div>
+                        <div class="card-body">
+                            <ul class="violations-list">
+                                <li><input type="checkbox" checked disabled> Restricted Data Upload</li>
+                                <li><input type="checkbox" checked disabled> Unauthorized USB Use</li>
+                                <li><input type="checkbox" checked disabled> Email Confidential Data</li>
+                            </ul>
+                            <button class="btn-text-blue" onclick="window.location.href='/policy'">Manage
+                                Policies</button>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Activity Logs</h3>
+                        </div>
+                        <div class="card-body">
+                            <ul class="logs-list" id="activityLogsList">
+                            </ul>
+                            <button class="btn-blue-outline" onclick="window.location.href='/logs'">View Logs <i
+                                    class="fas fa-chevron-right"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // I-fetch ang live calculations para sa Dashboard Trend Line Chart
+            fetch('/api/threat-trend')
+                .then(response => response.json())
+                .then(trendData => {
+                    const ctx = document.getElementById('threatAnalyticsChart').getContext('2d'); // Siguraduhing tama ang ID ng canvas mo
+
+                    new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: trendData.labels, // Halimbawa: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'] sa database
+                            datasets: [{
+                                label: 'Threats Detected',
+                                data: trendData.data, // Live counts mula sa alerts table
+                                borderColor: '#3b82f6',
+                                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                                fill: true,
+                                tension: 0.4,
+                                borderWidth: 3,
+                                pointBackgroundColor: '#3b82f6'
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { display: false }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    ticks: { precision: 0 }
+                                }
+                            }
+                        }
+                    });
+                })
+                .catch(err => console.error('Error loading dashboard line chart:', err));
+        });
+    </script>
+</body>
+</html>

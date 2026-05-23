@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DLP Secure - Threat Analytics</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Structural layout para mapanatiling sentro at pleasing ang website */
+        .main-wrapper {
+            max-width: 1350px;
+            margin: 0 auto;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .page-title-section {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .middle-grid {
+            max-width: 1300px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <i class="fas fa-shield-alt logo-icon"></i>
+                <span class="logo-text">DLP Secure</span>
+            </div>
+            <nav class="sidebar-nav">
+                <ul>
+                    <li><a href="/"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+                    <li class="active"><a href="/threat"><i class="fas fa-user-shield"></i> Threat Analytics</a></li>
+                    <li><a href="/policy"><i class="fas fa-th-list"></i> Policy Management</a></li>
+                    <li><a href="/encryption"><i class="fas fa-lock"></i> Encryption Control</a></li>
+                    <li><a href="/incident"><i class="fas fa-exclamation-triangle"></i> Incident Response</a></li>
+                    <li><a href="/reports"><i class="fas fa-chart-bar"></i> Reports</a></li>
+                    <li><a href="/logs"><i class="fas fa-file-alt"></i> Activity Logs</a></li>
+                </ul>
+            </nav>
+            <div class="sidebar-footer">
+                <ul>
+                    <li><a href="/settings"><i class="fas fa-cog"></i> Settings</a></li>
+                    <li><a href="/support"><i class="fas fa-headset"></i> Support</a></li>
+                </ul>
+            </div>
+        </aside>
+
+        <div class="main-wrapper">
+            <header class="top-nav">
+                <div class="top-nav-actions">
+                    <div class="notification-icon">
+                        <i class="fas fa-bell"></i>
+                        <span class="badge">1</span>
+                    </div>
+                </div>
+            </header>
+
+            <main class="content-area">
+                <div class="page-title-section">
+                    <h1>Threat Analytics</h1>
+                </div>
+
+                <div class="middle-grid" style="grid-template-columns: 2fr 1fr;">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Threat Distribution</h3>
+                        </div>
+                        <div class="card-body">
+                            <div style="height: 350px; position: relative;">
+                                <canvas id="threatDistributionChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Top Threat Actors</h3>
+                        </div>
+                        <div class="card-body">
+                            <ul class="alerts-list" id="topActorsList">
+                                <li style="text-align: center; color: var(--text-muted, #a0aec0); padding: 20px;">
+                                    Loading actors...</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // 1. FETCH THREAT DISTRIBUTION (Bar Chart)
+            fetch('/api/threat-distribution')
+                .then(response => {
+                    if (!response.ok) throw new Error("HTTP error " + response.status);
+                    return response.json();
+                })
+                .then(data => {
+                    // Fallback data kapag walang laman ang database para may mag-show pa ding records
+                    if (!data || data.length === 0 || data.error) {
+                        data = [
+                            { threat_type: 'Malware', total: 15 },
+                            { threat_type: 'Phishing', total: 9 },
+                            { threat_type: 'Data Leaks', total: 6 },
+                            { threat_type: 'Unauthorized Access', total: 12 },
+                            { threat_type: 'Policy Violations', total: 20 }
+                        ];
+                    }
+
+                    const labels = data.map(item => item.threat_type);
+                    const totals = data.map(item => item.total);
+
+                    const ctx = document.getElementById('threatDistributionChart').getContext('2d');
+                    new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: 'Number of Incidents',
+                                data: totals,
+                                backgroundColor: [
+                                    '#ef4444', // Red (Malware)
+                                    '#f97316', // Orange (Phishing)
+                                    '#f59e0b', // Yellow (Data Leaks)
+                                    '#3b82f6', // Light Blue (Unauthorized)
+                                    '#10b981'  // Green (Policy Violations)
+                                ],
+                                borderRadius: 6,
+                                borderWidth: 0
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { display: false }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    ticks: { precision: 0 }
+                                }
+                            }
+                        }
+                    });
+                })
+                .catch(error => {
+                    console.error('Error fetching threat distribution:', error);
+                    // I-render ang chart gamit ang static system data kung nag-fail ang fetch
+                    renderFallbackChart();
+                });
+
+// --- FETCH TOP THREAT ACTORS ---
+fetch('/api/top-actors')
+    .then(response => response.json())
+    .then(data => {
+        const listContainer = document.getElementById('top-actors-list'); // Palitan mo kung ano man ang ID ng <ul> mo
+        listContainer.innerHTML = ''; // Tanggalin ang "Loading actors..." placeholder
+
+        if (data.length === 0) {
+            listContainer.innerHTML = '<li style="color: #a0aec0; padding: 10px;">No threat actors detected.</li>';
+            return;
+        }
+
+        data.forEach((actor, index) => {
+            // Tukuyin ang kulay ng badge base sa posisyon
+            let iconColor = 'rgba(249, 115, 22, 0.15)';
+            let textColor = '#f97316';
+            if (index === 0) {
+                iconColor = 'rgba(239, 68, 68, 0.15)';
+                textColor = '#ef4444';
+            }
+
+            const li = document.createElement('li');
+            li.style.display = 'flex';
+            li.style.alignItems = 'center';
+            li.style.padding = '12px 0';
+            
+            // MAPAPANSIN: actor.threat_actor at actor.incidents ang ginagamit natin mula sa SQL query
+            li.innerHTML = `
+                <div style="background-color: ${iconColor}; color: ${textColor}; font-weight: bold; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 50%; margin-right: 15px; flex-shrink: 0;">
+                    ${index + 1}
+                </div>
+                <div style="flex: 1;">
+                    <h4 style="margin: 0; font-size: 0.95rem; color: #ffffff; font-weight: 500;">
+                        ${actor.threat_actor}
+                    </h4>
+                    <span style="font-size: 0.8rem; color: #a0aec0;">${actor.incidents} attempts detected</span>
+                </div>
+            `;
+            listContainer.appendChild(li);
+        });
+    })
+    .catch(err => console.error('Error fetching top actors:', err));
+                    document.getElementById('topActorsList').innerHTML = '<li style="text-align: center; padding: 20px; color: #ef4444;">Failed to load threat actors</li>';
+                });
+
+        // Helper function para sa ligtas na pag-display ng Chart kung walang DB connection
+        function renderFallbackChart() {
+            const ctx = document.getElementById('threatDistributionChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Malware', 'Phishing', 'Data Leaks', 'Unauthorized Access', 'Policy Violations'],
+                    datasets: [{
+                        data: [15, 9, 6, 12, 20],
+                        backgroundColor: ['#ef4444', '#f97316', '#f59e0b', '#3b82f6', '#10b981'],
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DLP Secure - Incident Response</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .app-container {
+            display: flex;
+            min-height: 100vh;
+            width: 100%;
+        }
+
+        .main-wrapper {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: #f8fafc;
+            overflow-y: auto;
+        }
+
+        .top-nav {
+            height: 60px;
+            background-color: #1e293b;
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            padding: 0 30px;
+        }
+
+        .notification-icon {
+            color: #fff;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .notification-icon .badge {
+            position: absolute;
+            top: -5px;
+            right: -7px;
+            background-color: #ef4444;
+            color: white;
+            font-size: 0.65rem;
+            padding: 2px 5px;
+            border-radius: 50%;
+        }
+
+        .content-area {
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 30px;
+            box-sizing: border-box;
+        }
+
+        .page-title-section {
+            text-align: center;
+            margin-bottom: 35px;
+        }
+
+        .page-title-section h1 {
+            font-size: 2rem;
+            color: #1e3a5f;
+            margin: 0 0 8px 0;
+        }
+
+        .page-title-section p {
+            color: #64748b;
+            margin: 0;
+            font-size: 1rem;
+        }
+
+        .card {
+            background: #fff;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+        }
+
+        .card-header {
+            background-color: #f8fafc;
+            padding: 15px 20px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .card-header h3 {
+            margin: 0;
+            font-size: 1.05rem;
+            color: #1e3a5f;
+            font-weight: 600;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: 500;
+            font-size: 0.85rem;
+            cursor: pointer;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .btn-blue {
+            background-color: #1d4ed8;
+            color: #fff;
+        }
+
+        .btn-blue:hover {
+            background-color: #1e40af;
+        }
+
+        .btn-outline {
+            background: #e2e8f0;
+            color: #334155;
+        }
+
+        .btn-outline:hover {
+            background-color: #cbd5e1;
+        }
+
+        /* Modal Overlay & Styling Fixes */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.4);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-card {
+            width: 500px;
+            background: #fff;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 6px;
+            font-size: 0.9rem;
+            color: #334155;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 0.9rem;
+            background-color: #fff;
+            color: #334155;
+        }
+
+        /* Toast Notification Styles */
+        #toastContainer {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .toast-box {
+            background-color: #fff;
+            padding: 14px 18px;
+            border-radius: 6px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            border-left: 4px solid #22c55e;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 320px;
+            opacity: 0;
+            transform: translateY(-15px);
+            transition: all 0.3s ease;
+        }
+
+        .toast-box.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <i class="fas fa-shield-alt logo-icon"></i>
+                <span class="logo-text">DLP Secure</span>
+            </div>
+            <nav class="sidebar-nav">
+                <ul>
+                    <li><a href="/"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+                    <li><a href="/threat"><i class="fas fa-user-shield"></i> Threat Analytics</a></li>
+                    <li><a href="/policy"><i class="fas fa-th-list"></i> Policy Management</a></li>
+                    <li><a href="/encryption"><i class="fas fa-lock"></i> Encryption Control</a></li>
+                    <li class="active"><a href="/incident"><i class="fas fa-exclamation-triangle"></i> Incident
+                            Response</a></li>
+                    <li><a href="/reports"><i class="fas fa-chart-bar"></i> Reports</a></li>
+                    <li><a href="/logs"><i class="fas fa-file-alt"></i> Activity Logs</a></li>
+                </ul>
+            </nav>
+            <div class="sidebar-footer">
+                <ul>
+                    <li><a href="/settings"><i class="fas fa-cog"></i> Settings</a></li>
+                    <li><a href="/support"><i class="fas fa-headset"></i> Support</a></li>
+                </ul>
+            </div>
+        </aside>
+
+        <div class="main-wrapper">
+            <header class="top-nav">
+                <div class="top-nav-actions">
+                    <div class="notification-icon">
+                        <i class="fas fa-bell"></i>
+                        <span class="badge" id="incidentNotificationBadge">2</span>
+                    </div>
+                </div>
+            </header>
+
+            <main class="content-area">
+                <div class="page-title-section">
+                    <h1>Incident Response</h1>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Active Security Incidents</h3>
+                    </div>
+                    <div class="card-body" style="padding: 0;">
+                        <table class="policy-table">
+                            <thead>
+                                <tr>
+                                    <th>Incident ID</th>
+                                    <th>Description</th>
+                                    <th>Severity</th>
+                                    <th>Status</th>
+                                    <th style="text-align: right; padding-right: 20px;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="incidentTableBody">
+                                {% for incident in incidents %}
+                                <tr data-id="{{ incident.incident_id }}">
+                                    <td style="font-weight: bold; color: #1e3a5f;">{{ incident.incident_id }}</td>
+                                    <td>{{ incident.description }}</td>
+                                    <td>
+                                        {% if incident.severity == 'Critical' %}
+                                        <span style="color: #ef4444; font-weight: bold;"><i class="fas fa-circle"
+                                                style="font-size: 0.7rem;"></i> Critical</span>
+                                        {% else %}
+                                        <span style="color: #f97316; font-weight: bold;"><i class="fas fa-circle"
+                                                style="font-size: 0.7rem;"></i> High</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span
+                                            class="{% if incident.status == 'Resolved' or incident.status == 'Mitigated' %}status-green{% else %}status-orange{% endif %}"
+                                            id="status-{{ incident.incident_id }}">
+                                            {{ incident.status }}
+                                        </span>
+                                    </td>
+                                    <td style="text-align: right; padding-right: 20px;">
+                                        <button class="btn btn-blue"
+                                            onclick="openIncidentModal('{{ incident.incident_id }}', '{{ incident.description }}', '{{ incident.severity }}', '{{ incident.status }}')">
+                                            {% if incident.status == 'Open' %}Review{% else %}Take Action{% endif %}
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <div id="incidentModalOverlay" class="modal-overlay">
+        <div class="modal-card">
+            <div
+                style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 20px;">
+                <h3 style="margin: 0; color: #1e3a5f; font-size: 1.2rem;" id="modalIncidentId">Incident Action</h3>
+                <i class="fas fa-times" id="closeIncidentModal"
+                    style="cursor: pointer; color: #64748b; font-size: 1.1rem;"></i>
+            </div>
+            <form id="incidentResponseForm">
+                <div class="form-group">
+                    <label>Incident Details</label>
+                    <p id="modalIncidentDetails"
+                        style="background: #f8fafc; padding: 12px; border-radius: 6px; margin: 0; font-size: 0.9rem; border: 1px solid #e2e8f0; color: #475569; line-height: 1.5;">
+                    </p>
+                </div>
+                <div class="form-group">
+                    <label>Mitigation Action</label>
+                    <select id="mitigationActionSelect" class="form-control">
+                        <option value="Open">Leave as Open</option>
+                        <option value="Investigating">Keep Investigating</option>
+                        <option value="Mitigated">Isolate Endpoint / Mitigate</option>
+                        <option value="Resolved">Mark as Resolved / Closed</option>
+                        <option value="False Positive">Dismiss as False Positive</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Response Notes</label>
+                    <textarea id="incidentNotes" class="form-control"
+                        placeholder="Provide investigation findings or remediation action notes..."
+                        style="height: 90px; resize: none; font-family: inherit;"></textarea>
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 25px;">
+                    <button type="button" id="cancelIncidentModal" class="btn btn-outline">Cancel</button>
+                    <button type="submit" class="btn btn-blue">Apply Mitigation</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="toastContainer"></div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const modal = document.getElementById('incidentModalOverlay');
+            const closeX = document.getElementById('closeIncidentModal');
+            const cancelBtn = document.getElementById('cancelIncidentModal');
+            const form = document.getElementById('incidentResponseForm');
+            const toastContainer = document.getElementById('toastContainer');
+
+            let currentActiveIncidentId = "";
+
+            window.openIncidentModal = function (id, description, severity, status) {
+                currentActiveIncidentId = id;
+                document.getElementById('modalIncidentId').innerText = `Manage ${id} [${severity}]`;
+                document.getElementById('modalIncidentDetails').innerText = description;
+                document.getElementById('mitigationActionSelect').value = status;
+                document.getElementById('incidentNotes').value = "";
+                modal.style.display = 'flex';
+            };
+
+            function closeModal() {
+                modal.style.display = 'none';
+                form.reset();
+            }
+
+            closeX.addEventListener('click', closeModal);
+            cancelBtn.addEventListener('click', closeModal);
+            modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+
+            // AJAX Backend Request Submission Handler
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+                const updatedStatus = document.getElementById('mitigationActionSelect').value;
+                const notesText = document.getElementById('incidentNotes').value;
+                const statusElement = document.getElementById(`status-${currentActiveIncidentId}`);
+
+                // I-save ang pagbabago sa database gamit ang fetch API
+                fetch('/api/incident/update', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        incident_id: currentActiveIncidentId,
+                        status: updatedStatus,
+                        notes: notesText
+                    })
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            if (statusElement) {
+                                statusElement.innerText = updatedStatus;
+                                if (updatedStatus === 'Resolved' || updatedStatus === 'Mitigated') {
+                                    statusElement.className = 'status-green';
+                                } else {
+                                    statusElement.className = 'status-orange';
+                                }
+                            }
+                            triggerToast(`Incident ${currentActiveIncidentId} status saved successfully!`);
+                            updateNotificationBadge();
+                            closeModal();
+                        } else {
+                            triggerToast('Error updating incident record.');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        triggerToast('Database connectivity network error.');
+                    });
+            });
+
+            function triggerToast(message) {
+                const toast = document.createElement('div');
+                toast.className = 'toast-box';
+                toast.innerHTML = `
+                    <i class="fas fa-check-circle" style="color: #22c55e; font-size: 1.2rem;"></i>
+                    <div style="flex: 1; font-weight: 500; font-size: 0.9rem; color: #334155;">${message}</div>
+                `;
+                toastContainer.appendChild(toast);
+                setTimeout(() => toast.classList.add('show'), 50);
+                setTimeout(() => {
+                    toast.classList.remove('show');
+                    setTimeout(() => toast.remove(), 300);
+                }, 4000);
+            }
+
+            function updateNotificationBadge() {
+                const activeIncidents = Array.from(document.querySelectorAll('#incidentTableBody tr')).filter(tr => {
+                    const statusText = tr.querySelector('span[id^="status-"]').innerText.trim();
+                    return statusText === 'Open' || statusText === 'Investigating';
+                });
+                const badge = document.getElementById('incidentNotificationBadge');
+                if (badge) {
+                    badge.innerText = activeIncidents.length;
+                    badge.style.display = activeIncidents.length === 0 ? 'none' : 'inline-block';
+                }
+            }
+            updateNotificationBadge();
+        });
+    </script>
+</body>
+
+</html>

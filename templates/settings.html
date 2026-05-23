@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DLP Secure - Settings</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <i class="fas fa-shield-alt logo-icon"></i>
+                <span class="logo-text">DLP Secure</span>
+            </div>
+            <nav class="sidebar-nav">
+                <ul>
+                    <li><a href="/"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+                    <li><a href="/threat"><i class="fas fa-user-shield"></i> Threat Analytics</a></li>
+                    <li><a href="/policy"><i class="fas fa-th-list"></i> Policy Management</a></li>
+                    <li><a href="/encryption"><i class="fas fa-lock"></i> Encryption Control</a></li>
+                    <li><a href="/incident"><i class="fas fa-exclamation-triangle"></i> Incident Response</a></li>
+                    <li><a href="/reports"><i class="fas fa-chart-bar"></i> Reports</a></li>
+                    <li><a href="/logs"><i class="fas fa-file-alt"></i> Activity Logs</a></li>
+                </ul>
+            </nav>
+            <div class="sidebar-footer">
+                <ul>
+                    <li class="active"><a href="/settings"><i class="fas fa-cog"></i> Settings</a></li>
+                    <li><a href="/support"><i class="fas fa-headset"></i> Support</a></li>
+                </ul>
+            </div>
+        </aside>
+
+        <div class="main-wrapper">
+            <header class="top-nav">
+                <div class="top-nav-actions">
+                    <div class="notification-icon">
+                        <i class="fas fa-bell"></i>
+                        <span class="badge">1</span>
+                    </div>
+                </div>
+            </header>
+
+            <main class="content-area">
+                <div class="page-title-section">
+                    <h1>System Settings</h1>
+                </div>
+
+                <div class="middle-grid" style="grid-template-columns: 1fr 1fr;">
+                    <div class="card">
+                        <div class="card-header"><h3>General Configuration</h3></div>
+                        <div class="card-body">
+                            <div class="detail-item">
+                                <span class="label">System Name</span>
+                                <span class="value">DLP-SECURE-V1</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="label">Timezone</span>
+                                <span class="value">UTC+8 (Manila)</span>
+                            </div>
+                            <button class="btn btn-blue" style="margin-top: 15px;">Update General</button>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header"><h3>Security & Authentication</h3></div>
+                        <div class="card-body">
+                            <div class="detail-item">
+                                <span class="label">2FA Authentication</span>
+                                <span class="value status-green">Enabled</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="label">API Access Keys</span>
+                                <span class="value">Active (3 Keys)</span>
+                            </div>
+                            <button class="btn btn-blue" style="margin-top: 15px;">Manage Security</button>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
