@@ -51,10 +51,11 @@
         <div class="main-wrapper">
             <header class="top-nav{% if section == 'account' %} top-nav-change-password{% endif %}">
                 {% if section == 'account' %}
-                <a href="/settings" class="top-nav-back" aria-label="Back to settings">
-                    <i class="fas fa-arrow-left"></i>
-                </a>
                 <div class="top-nav-password-title">Change Password</div>
+                {% elif section == 'security' %}
+                <div class="top-nav-page-title">Security Settings</div>
+                {% elif section == 'users' %}
+                <div class="top-nav-page-title">User Management Settings</div>
                 {% else %}
                 <div class="top-nav-left">
                     <button id="sidebarToggle" class="sidebar-toggle">
@@ -73,8 +74,8 @@
                 {% endif %}
             </header>
 
-            <main class="content-area{% if section == 'account' %} change-password-page{% endif %}">
-                {% if section != 'account' %}
+            <main class="content-area{% if section == 'account' %} change-password-page{% endif %}{% if section == 'security' %} security-settings-page{% endif %}{% if section == 'users' %} users-settings-page{% endif %}{% if section == 'backup' %} backup-settings-page{% endif %}">
+                {% if section != 'account' and section != 'security' and section != 'users' %}
                 <div class="page-title-section">
                     <h1>
                         {% if section == 'security' %} Security Settings
@@ -128,16 +129,40 @@
                         </form>
                     </div>
                     {% elif section == 'security' %}
-                    <div class="card">
-                        <div class="card-header"><h3>Security & Authentication</h3></div>
-                        <div class="card-body">
-                            <div class="detail-item">
-                                <span class="label">2FA Authentication</span>
-                                <span class="value status-green">Enabled</span>
-                            </div>
-                            <a href="/settings/account#change-password" class="btn btn-blue" style="margin-top: 15px; display: inline-block; text-decoration: none;">Change Password</a>
+                    <section class="security-settings-panel">
+                        <div class="security-settings-header">
+                            <h3>Security & Authentication</h3>
+                            <p>Review and enforce core account protection controls.</p>
                         </div>
-                    </div>
+
+                        <div class="security-setting-row">
+                            <div>
+                                <h4>Multi-Factor Authentication</h4>
+                                <p>All admin accounts are required to complete a second verification step.</p>
+                            </div>
+                            <span class="security-status enabled">Enabled</span>
+                        </div>
+
+                        <div class="security-setting-row">
+                            <div>
+                                <h4>Password Rotation</h4>
+                                <p>Passwords expire every 90 days with minimum complexity checks.</p>
+                            </div>
+                            <span class="security-status enforced">Enforced</span>
+                        </div>
+
+                        <div class="security-setting-row">
+                            <div>
+                                <h4>Session Timeout</h4>
+                                <p>Inactive sessions are automatically signed out after 15 minutes.</p>
+                            </div>
+                            <span class="security-status standard">15 min</span>
+                        </div>
+
+                        <div class="security-settings-actions">
+                            <a href="/settings/account#change-password" class="btn btn-blue">Change Password</a>
+                        </div>
+                    </section>
                     {% elif section == 'notifications' %}
                     <div class="card">
                         <div class="card-header"><h3>Alert Preferences</h3></div>
@@ -150,24 +175,177 @@
                         </div>
                     </div>
                     {% elif section == 'users' %}
-                    <div class="card">
-                        <div class="card-header"><h3>User Directory</h3></div>
-                        <div class="card-body">
-                            <p>Manage system users and permissions here.</p>
-                            <button class="btn btn-blue" style="margin-top: 15px;">Add New User</button>
+                    <section class="users-settings-panel">
+                        <div class="users-settings-header">
+                            <h3>User Directory & Access Control</h3>
+                            <p>Manage identities, role assignments, and account activity across the platform.</p>
+                        </div>
+
+                        <div class="users-kpi-grid">
+                            <div class="users-kpi-item">
+                                <span class="kpi-label">Total Users</span>
+                                <span class="kpi-value" id="usersTotalCount">24</span>
+                            </div>
+                            <div class="users-kpi-item">
+                                <span class="kpi-label">Active Sessions</span>
+                                <span class="kpi-value" id="usersActiveCount">8</span>
+                            </div>
+                            <div class="users-kpi-item">
+                                <span class="kpi-label">Admins</span>
+                                <span class="kpi-value" id="usersAdminsCount">3</span>
+                            </div>
+                        </div>
+
+                        <div class="users-list" id="usersList">
+                            <div class="user-row">
+                                <div class="user-main">
+                                    <h4>Ana Reyes</h4>
+                                    <p>Security Administrator</p>
+                                </div>
+                                <span class="user-status active">Active</span>
+                            </div>
+                            <div class="user-row">
+                                <div class="user-main">
+                                    <h4>Marco Dela Cruz</h4>
+                                    <p>Compliance Officer</p>
+                                </div>
+                                <span class="user-status active">Active</span>
+                            </div>
+                            <div class="user-row">
+                                <div class="user-main">
+                                    <h4>Leah Santos</h4>
+                                    <p>Read-Only Auditor</p>
+                                </div>
+                                <span class="user-status pending">Pending Invite</span>
+                            </div>
+                        </div>
+
+                        <div class="users-settings-actions">
+                            <button class="btn btn-blue-outline" type="button" id="reviewRolesBtn">Review Roles</button>
+                            <button class="btn btn-blue" type="button" id="addNewUserBtn">Add New User</button>
+                        </div>
+                    </section>
+
+                    <div class="user-modal-overlay" id="addUserModalOverlay">
+                        <div class="user-modal-card">
+                            <div class="user-modal-header">
+                                <h3>Add New User</h3>
+                                <button type="button" id="closeAddUserModal" class="user-modal-close" aria-label="Close add user modal">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                            <form id="addUserForm" class="user-modal-form">
+                                <label for="newUserName">Full Name</label>
+                                <input id="newUserName" type="text" placeholder="e.g., Juan Dela Cruz" required>
+
+                                <label for="newUserRole">Role</label>
+                                <select id="newUserRole" required>
+                                    <option value="Security Analyst">Security Analyst</option>
+                                    <option value="Security Administrator">Security Administrator</option>
+                                    <option value="Compliance Officer">Compliance Officer</option>
+                                    <option value="Read-Only Auditor">Read-Only Auditor</option>
+                                    <option value="System Administrator">System Administrator</option>
+                                </select>
+
+                                <label for="newUserStatus">Status</label>
+                                <select id="newUserStatus">
+                                    <option value="active">Active</option>
+                                    <option value="pending">Pending Invite</option>
+                                </select>
+
+                                <div class="user-modal-actions">
+                                    <button type="button" class="btn btn-blue-outline" id="cancelAddUserModal">Cancel</button>
+                                    <button type="submit" class="btn btn-blue">Add User</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div class="user-modal-overlay" id="reviewRolesModalOverlay">
+                        <div class="user-modal-card">
+                            <div class="user-modal-header">
+                                <h3>Review Roles</h3>
+                                <button type="button" id="closeReviewRolesModal" class="user-modal-close" aria-label="Close review roles modal">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                            <form id="reviewRolesForm" class="user-modal-form">
+                                <label for="reviewUserSelect">Select User</label>
+                                <select id="reviewUserSelect" required></select>
+
+                                <label for="reviewRoleSelect">Role</label>
+                                <select id="reviewRoleSelect" required>
+                                    <option value="Security Analyst">Security Analyst</option>
+                                    <option value="Security Administrator">Security Administrator</option>
+                                    <option value="Compliance Officer">Compliance Officer</option>
+                                    <option value="Read-Only Auditor">Read-Only Auditor</option>
+                                    <option value="System Administrator">System Administrator</option>
+                                </select>
+
+                                <label for="reviewStatusSelect">Status</label>
+                                <select id="reviewStatusSelect" required>
+                                    <option value="active">Active</option>
+                                    <option value="pending">Pending Invite</option>
+                                </select>
+
+                                <div class="user-modal-actions">
+                                    <button type="button" class="btn btn-blue-outline" id="cancelReviewRolesModal">Cancel</button>
+                                    <button type="submit" class="btn btn-blue">Save Changes</button>
+                                </div>
+                            </form>
                         </div>
                     </div>
                     {% elif section == 'backup' %}
-                    <div class="card">
-                        <div class="card-header"><h3>Data Backup</h3></div>
-                        <div class="card-body">
-                            <div class="detail-item">
-                                <span class="label">Last Backup</span>
-                                <span class="value">2024-05-26 23:00</span>
-                            </div>
-                            <button class="btn btn-blue" style="margin-top: 15px;">Run Manual Backup</button>
+                    <section class="backup-settings-panel">
+                        <div class="backup-settings-header">
+                            <h3>Backup & Logs Control Center</h3>
+                            <p>Monitor backup health, retention policy, and audit log exports from one view.</p>
                         </div>
-                    </div>
+
+                        <div class="backup-kpi-grid">
+                            <div class="backup-kpi-item">
+                                <span class="kpi-label">Last Successful Backup</span>
+                                <span class="kpi-value" id="backupLastRun">2026-05-27 22:45</span>
+                            </div>
+                            <div class="backup-kpi-item">
+                                <span class="kpi-label">Retention Policy</span>
+                                <span class="kpi-value">30 days</span>
+                            </div>
+                            <div class="backup-kpi-item">
+                                <span class="kpi-label">Storage Health</span>
+                                <span class="kpi-value">Healthy</span>
+                            </div>
+                        </div>
+
+                        <div class="backup-log-list" id="backupLogList">
+                            <div class="backup-log-row">
+                                <div>
+                                    <h4>Nightly Incremental Backup</h4>
+                                    <p>Completed • Database + configuration snapshots</p>
+                                </div>
+                                <span class="backup-log-time">22:45</span>
+                            </div>
+                            <div class="backup-log-row">
+                                <div>
+                                    <h4>Audit Log Export</h4>
+                                    <p>Completed • Security activity archive generated</p>
+                                </div>
+                                <span class="backup-log-time">21:30</span>
+                            </div>
+                            <div class="backup-log-row">
+                                <div>
+                                    <h4>Integrity Verification</h4>
+                                    <p>Passed • Restore points validated successfully</p>
+                                </div>
+                                <span class="backup-log-time">20:00</span>
+                            </div>
+                        </div>
+
+                        <div class="backup-settings-actions">
+                            <button class="btn btn-blue-outline" type="button" id="exportBackupLogsBtn">Export Logs</button>
+                            <button class="btn btn-blue" type="button" id="runManualBackupBtn">Run Manual Backup</button>
+                        </div>
+                    </section>
                     {% else %}
                     <div class="card">
                         <div class="card-header"><h3>General Configuration</h3></div>

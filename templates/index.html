@@ -72,7 +72,7 @@
         </aside>
 
         <div class="main-wrapper">
-            <header class="top-nav">
+            <header class="top-nav top-nav-dashboard">
                 <div class="top-nav-left">
                     <button id="sidebarToggle" class="sidebar-toggle">
                         <i class="fas fa-bars"></i>
@@ -90,6 +90,15 @@
                             <ul id="notificationList">
                                 <li class="notification-empty">Loading notifications...</li>
                             </ul>
+                        </div>
+                    </div>
+                    <div class="top-nav-user-pill">
+                        <div class="top-nav-user-icon">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <div class="top-nav-user-meta">
+                            <span class="name">{{ session.get('username', 'User') }}</span>
+                            <span class="status">Active</span>
                         </div>
                     </div>
                 </div>
