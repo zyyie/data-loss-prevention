@@ -644,11 +644,20 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.has-dropdown > a').forEach((link) => {
             const chevron = link.querySelector('.fa-chevron-down');
             if (!chevron) return;
-
-            chevron.addEventListener('click', (e) => {
+            link.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                link.closest('.has-dropdown')?.classList.toggle('open');
+                const currentDropdown = link.closest('.has-dropdown');
+                if (!currentDropdown) return;
+                const shouldOpen = !currentDropdown.classList.contains('open');
+
+                // Close siblings at the same level before opening the current one.
+                const siblingDropdowns = currentDropdown.parentElement?.querySelectorAll(':scope > .has-dropdown.open') || [];
+                siblingDropdowns.forEach((item) => {
+                    if (item !== currentDropdown) item.classList.remove('open');
+                });
+
+                currentDropdown.classList.toggle('open', shouldOpen);
             });
         });
     }
@@ -784,6 +793,242 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 });
             }
+        }
+    }
+
+    function initUserManagementPage() {
+        const usersPanel = document.querySelector('.users-settings-panel');
+        if (!usersPanel) return;
+
+        const usersList = document.getElementById('usersList');
+        const addNewUserBtn = document.getElementById('addNewUserBtn');
+        const reviewRolesBtn = document.getElementById('reviewRolesBtn');
+        const totalCountEl = document.getElementById('usersTotalCount');
+        const activeCountEl = document.getElementById('usersActiveCount');
+        const adminsCountEl = document.getElementById('usersAdminsCount');
+        const addUserModal = document.getElementById('addUserModalOverlay');
+        const addUserForm = document.getElementById('addUserForm');
+        const closeAddUserModal = document.getElementById('closeAddUserModal');
+        const cancelAddUserModal = document.getElementById('cancelAddUserModal');
+        const newUserNameInput = document.getElementById('newUserName');
+        const newUserRoleInput = document.getElementById('newUserRole');
+        const newUserStatusSelect = document.getElementById('newUserStatus');
+        const reviewRolesModal = document.getElementById('reviewRolesModalOverlay');
+        const reviewRolesForm = document.getElementById('reviewRolesForm');
+        const closeReviewRolesModal = document.getElementById('closeReviewRolesModal');
+        const cancelReviewRolesModal = document.getElementById('cancelReviewRolesModal');
+        const reviewUserSelect = document.getElementById('reviewUserSelect');
+        const reviewRoleSelect = document.getElementById('reviewRoleSelect');
+        const reviewStatusSelect = document.getElementById('reviewStatusSelect');
+
+        if (!usersList || !addNewUserBtn) return;
+
+        function refreshUserStats() {
+            const rows = Array.from(usersList.querySelectorAll('.user-row'));
+            const activeUsers = rows.filter((row) => row.querySelector('.user-status')?.classList.contains('active')).length;
+            const adminUsers = rows.filter((row) => {
+                const roleText = (row.querySelector('.user-main p')?.innerText || '').toLowerCase();
+                return roleText.includes('admin');
+            }).length;
+
+            if (totalCountEl) totalCountEl.textContent = String(rows.length);
+            if (activeCountEl) activeCountEl.textContent = String(activeUsers);
+            if (adminsCountEl) adminsCountEl.textContent = String(adminUsers);
+        }
+
+        function closeUserModal() {
+            if (!addUserModal || !addUserForm) return;
+            addUserModal.classList.remove('show');
+            addUserForm.reset();
+            if (newUserStatusSelect) newUserStatusSelect.value = 'active';
+        }
+
+        function getUserRows() {
+            return Array.from(usersList.querySelectorAll('.user-row'));
+        }
+
+        function closeReviewModal() {
+            if (!reviewRolesModal || !reviewRolesForm) return;
+            reviewRolesModal.classList.remove('show');
+            reviewRolesForm.reset();
+            if (reviewUserSelect) reviewUserSelect.innerHTML = '';
+        }
+
+        function syncReviewFormFromSelectedUser() {
+            if (!reviewUserSelect || !reviewRoleSelect || !reviewStatusSelect) return;
+            const selectedIndex = Number(reviewUserSelect.value);
+            const rows = getUserRows();
+            const row = rows[selectedIndex];
+            if (!row) return;
+
+            const roleText = row.querySelector('.user-main p')?.innerText?.trim() || 'Security Analyst';
+            const isPending = row.querySelector('.user-status')?.classList.contains('pending');
+            reviewRoleSelect.value = roleText;
+            reviewStatusSelect.value = isPending ? 'pending' : 'active';
+        }
+
+        addNewUserBtn.addEventListener('click', () => {
+            if (!addUserModal) return;
+            addUserModal.classList.add('show');
+            if (newUserNameInput) {
+                newUserNameInput.disabled = false;
+                newUserNameInput.removeAttribute('readonly');
+                setTimeout(() => {
+                    newUserNameInput.focus();
+                    newUserNameInput.click();
+                }, 10);
+            }
+        });
+
+        if (closeAddUserModal) {
+            closeAddUserModal.addEventListener('click', closeUserModal);
+        }
+
+        if (cancelAddUserModal) {
+            cancelAddUserModal.addEventListener('click', closeUserModal);
+        }
+
+        if (addUserModal) {
+            addUserModal.addEventListener('click', (e) => {
+                if (e.target === addUserModal) closeUserModal();
+            });
+        }
+
+        if (addUserForm) {
+            addUserForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const name = (newUserNameInput?.value || '').trim();
+                const role = (newUserRoleInput?.value || '').trim() || 'Security Analyst';
+                const statusClass = (newUserStatusSelect?.value || 'active') === 'pending' ? 'pending' : 'active';
+                const statusText = statusClass === 'pending' ? 'Pending Invite' : 'Active';
+
+                if (!name) return;
+
+                const row = document.createElement('div');
+                row.className = 'user-row';
+                row.innerHTML = `
+                    <div class="user-main">
+                        <h4>${name}</h4>
+                        <p>${role}</p>
+                    </div>
+                    <span class="user-status ${statusClass}">${statusText}</span>
+                `;
+                usersList.appendChild(row);
+                refreshUserStats();
+                closeUserModal();
+            });
+        }
+
+        if (reviewRolesBtn) {
+            reviewRolesBtn.addEventListener('click', () => {
+                if (!reviewRolesModal || !reviewUserSelect) return;
+                const rows = getUserRows();
+                reviewUserSelect.innerHTML = rows.map((row, index) => {
+                    const name = row.querySelector('.user-main h4')?.innerText?.trim() || `User ${index + 1}`;
+                    return `<option value="${index}">${name}</option>`;
+                }).join('');
+
+                reviewRolesModal.classList.add('show');
+                syncReviewFormFromSelectedUser();
+            });
+        }
+
+        if (reviewUserSelect) {
+            reviewUserSelect.addEventListener('change', syncReviewFormFromSelectedUser);
+        }
+
+        if (closeReviewRolesModal) {
+            closeReviewRolesModal.addEventListener('click', closeReviewModal);
+        }
+
+        if (cancelReviewRolesModal) {
+            cancelReviewRolesModal.addEventListener('click', closeReviewModal);
+        }
+
+        if (reviewRolesModal) {
+            reviewRolesModal.addEventListener('click', (e) => {
+                if (e.target === reviewRolesModal) closeReviewModal();
+            });
+        }
+
+        if (reviewRolesForm) {
+            reviewRolesForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const selectedIndex = Number(reviewUserSelect?.value || 0);
+                const rows = getUserRows();
+                const targetRow = rows[selectedIndex];
+                if (!targetRow) return;
+
+                const selectedRole = reviewRoleSelect?.value || 'Security Analyst';
+                const selectedStatus = reviewStatusSelect?.value === 'pending' ? 'pending' : 'active';
+                const statusText = selectedStatus === 'pending' ? 'Pending Invite' : 'Active';
+
+                const roleEl = targetRow.querySelector('.user-main p');
+                const statusEl = targetRow.querySelector('.user-status');
+
+                if (roleEl) roleEl.innerText = selectedRole;
+                if (statusEl) {
+                    statusEl.classList.remove('active', 'pending');
+                    statusEl.classList.add(selectedStatus);
+                    statusEl.innerText = statusText;
+                }
+
+                refreshUserStats();
+                closeReviewModal();
+            });
+        }
+    }
+
+    function initBackupSettingsPage() {
+        const panel = document.querySelector('.backup-settings-panel');
+        if (!panel) return;
+
+        const runManualBackupBtn = document.getElementById('runManualBackupBtn');
+        const exportBackupLogsBtn = document.getElementById('exportBackupLogsBtn');
+        const backupLastRun = document.getElementById('backupLastRun');
+        const backupLogList = document.getElementById('backupLogList');
+
+        if (runManualBackupBtn && backupLogList) {
+            runManualBackupBtn.addEventListener('click', () => {
+                const now = new Date();
+                const pad = (v) => String(v).padStart(2, '0');
+                const timeLabel = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+                const dateLabel = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${timeLabel}`;
+
+                const row = document.createElement('div');
+                row.className = 'backup-log-row';
+                row.innerHTML = `
+                    <div>
+                        <h4>Manual Backup Execution</h4>
+                        <p>Completed • On-demand backup successfully created</p>
+                    </div>
+                    <span class="backup-log-time">${timeLabel}</span>
+                `;
+                backupLogList.insertBefore(row, backupLogList.firstChild);
+                if (backupLastRun) backupLastRun.textContent = dateLabel;
+            });
+        }
+
+        if (exportBackupLogsBtn) {
+            exportBackupLogsBtn.addEventListener('click', async () => {
+                const now = new Date();
+                const pad = (v) => String(v).padStart(2, '0');
+                const timeLabel = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+                const dateLabel = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${timeLabel}`;
+
+                if (backupLogList) {
+                    const row = document.createElement('div');
+                    row.className = 'backup-log-row';
+                    row.innerHTML = `
+                        <div>
+                            <h4>Audit Log Export</h4>
+                            <p>Completed • Security logs packaged for internal review (${dateLabel})</p>
+                        </div>
+                        <span class="backup-log-time">${timeLabel}</span>
+                    `;
+                    backupLogList.insertBefore(row, backupLogList.firstChild);
+                }
+            });
         }
     }
 
@@ -934,6 +1179,8 @@ document.addEventListener('DOMContentLoaded', () => {
     initReportsPage();
     initActivityLogsPage();
     initSettingsPage();
+    initUserManagementPage();
+    initBackupSettingsPage();
     initSidebarDropdowns();
     initChangePasswordForm();
 });

@@ -295,6 +295,74 @@
             margin-top: 8px;
             display: none;
         }
+
+        .login-error-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(2, 6, 23, 0.75);
+            z-index: 1100;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .login-error-overlay.open {
+            display: flex;
+        }
+
+        .login-error-modal {
+            background: radial-gradient(circle at top left, #1e3a5f 0%, #152a42 100%);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 20px;
+            padding: 28px 24px 22px;
+            width: 100%;
+            max-width: 380px;
+            text-align: center;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+        }
+
+        .login-error-icon {
+            width: 56px;
+            height: 56px;
+            margin: 0 auto 14px;
+            border-radius: 50%;
+            background: rgba(239, 68, 68, 0.15);
+            color: #f87171;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+
+        .login-error-modal h2 {
+            color: #fff;
+            margin: 0 0 10px;
+            font-size: 1.25rem;
+        }
+
+        .login-error-modal p {
+            color: #94a3b8;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            margin: 0 0 22px;
+        }
+
+        .btn-login-error {
+            width: 100%;
+            padding: 14px;
+            background-color: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .btn-login-error:hover {
+            background-color: #2563eb;
+        }
     </style>
 </head>
 <body>
@@ -304,11 +372,6 @@
             <h1>CipherSync</h1>
         </div>
 
-        {% if error %}
-        <div class="error-message">
-            <i class="fas fa-exclamation-circle"></i> {{ error }}
-        </div>
-        {% endif %}
         {% if registered %}
         <div class="success-message">
             <i class="fas fa-check-circle"></i> Account created successfully. You can now sign in.
@@ -337,6 +400,17 @@
         </form>
         <div class="signup-row">
             No account yet? <a href="/signup">Sign Up</a>
+        </div>
+    </div>
+
+    <div class="login-error-overlay" id="loginErrorOverlay" aria-hidden="true">
+        <div class="login-error-modal" role="alertdialog" aria-labelledby="loginErrorTitle">
+            <div class="login-error-icon">
+                <i class="fas fa-exclamation-circle"></i>
+            </div>
+            <h2 id="loginErrorTitle">Sign in failed</h2>
+            <p id="loginErrorMessage"></p>
+            <button type="button" class="btn-login-error" id="loginErrorOkBtn">OK</button>
         </div>
     </div>
 
@@ -372,8 +446,35 @@
     <script>
         (function () {
             const loginError = {{ error|tojson if error else 'null' }};
+            const loginErrorOverlay = document.getElementById('loginErrorOverlay');
+            const loginErrorMessage = document.getElementById('loginErrorMessage');
+            const loginErrorOkBtn = document.getElementById('loginErrorOkBtn');
+
+            function openLoginErrorModal(message) {
+                if (!loginErrorOverlay || !loginErrorMessage) return;
+                loginErrorMessage.textContent = message;
+                loginErrorOverlay.classList.add('open');
+                loginErrorOverlay.setAttribute('aria-hidden', 'false');
+            }
+
+            function closeLoginErrorModal() {
+                if (!loginErrorOverlay) return;
+                loginErrorOverlay.classList.remove('open');
+                loginErrorOverlay.setAttribute('aria-hidden', 'true');
+            }
+
             if (loginError) {
-                alert(loginError);
+                openLoginErrorModal(loginError);
+            }
+
+            if (loginErrorOkBtn) {
+                loginErrorOkBtn.addEventListener('click', closeLoginErrorModal);
+            }
+
+            if (loginErrorOverlay) {
+                loginErrorOverlay.addEventListener('click', (e) => {
+                    if (e.target === loginErrorOverlay) closeLoginErrorModal();
+                });
             }
 
             const overlay = document.getElementById('forgotOverlay');
