@@ -429,35 +429,55 @@ document.addEventListener('DOMContentLoaded', () => {
             loadActivePolicies(startEditMode);
         }
 
-        if (!createBtn || !overlayModal) return;
+        // Don't require create button; edit flow should still work.
+        if (!overlayModal || !entryForm) return;
 
-        createBtn.addEventListener('click', () => {
-            setCreateMode();
-            if (entryForm) entryForm.reset();
-            overlayModal.style.display = 'flex';
-        });
+        if (createBtn) {
+            createBtn.addEventListener('click', () => {
+                setCreateMode();
+                entryForm.reset();
+                overlayModal.style.display = 'flex';
+            });
+        }
 
         if (dismissBtn) {
             dismissBtn.addEventListener('click', () => {
                 overlayModal.style.display = 'none';
-                if (entryForm) entryForm.reset();
+                entryForm.reset();
                 setCreateMode();
             });
         }
         if (cancelBtn) {
             cancelBtn.addEventListener('click', () => {
                 overlayModal.style.display = 'none';
-                if (entryForm) entryForm.reset();
+                entryForm.reset();
                 setCreateMode();
             });
         }
+
+        // Click outside modal closes it
+        overlayModal.addEventListener('click', (e) => {
+            if (e.target !== overlayModal) return;
+            overlayModal.style.display = 'none';
+            entryForm.reset();
+            setCreateMode();
+        });
+
+        // ESC closes modal
+        document.addEventListener('keydown', (e) => {
+            if (e.key !== 'Escape') return;
+            if (overlayModal.style.display !== 'flex') return;
+            overlayModal.style.display = 'none';
+            entryForm.reset();
+            setCreateMode();
+        });
         if (deleteBtn) {
             deleteBtn.addEventListener('click', async () => {
                 if (editingPolicyId === null) return;
                 const shouldDelete = confirm('Delete this policy permanently?');
                 if (!shouldDelete) return;
-                if (entryForm && entryForm.dataset.submitting === 'true') return;
-                if (entryForm) entryForm.dataset.submitting = 'true';
+                if (entryForm.dataset.submitting === 'true') return;
+                entryForm.dataset.submitting = 'true';
 
                 try {
                     const res = await fetch(`${API_BASE}/policies/${editingPolicyId}`, {
@@ -476,16 +496,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     console.error('Policy deletion failed:', err);
                     alert('Network error while deleting policy.');
                 } finally {
-                    if (entryForm) entryForm.dataset.submitting = 'false';
+                    entryForm.dataset.submitting = 'false';
                 }
             });
         }
 
-        if (entryForm) {
-            entryForm.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                if (entryForm.dataset.submitting === 'true') return;
-                entryForm.dataset.submitting = 'true';
+        entryForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (entryForm.dataset.submitting === 'true') return;
+            entryForm.dataset.submitting = 'true';
 
                 const payload = {
                     policy_name: document.getElementById('policyFormName').value,
@@ -493,32 +512,31 @@ document.addEventListener('DOMContentLoaded', () => {
                     status: document.getElementById('policyFormStatus').value
                 };
 
-                try {
-                    const isEdit = editingPolicyId !== null;
-                    const endpoint = isEdit ? `${API_BASE}/policies/${editingPolicyId}` : `${API_BASE}/policies`;
-                    const method = isEdit ? 'PUT' : 'POST';
-                    const res = await fetch(endpoint, {
-                        method,
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
+            try {
+                const isEdit = editingPolicyId !== null;
+                const endpoint = isEdit ? `${API_BASE}/policies/${editingPolicyId}` : `${API_BASE}/policies`;
+                const method = isEdit ? 'PUT' : 'POST';
+                const res = await fetch(endpoint, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
 
-                    if (res.ok) {
-                        overlayModal.style.display = 'none';
-                        entryForm.reset();
-                        setCreateMode();
-                        loadActivePolicies(startEditMode);
-                    } else {
-                        const errData = await res.json();
-                        alert(`Deployment Error: ${errData.error || 'Server rejected request layer execution.'}`);
-                    }
-                } catch (err) {
-                    console.error('API endpoint transmission failure:', err);
-                } finally {
-                    entryForm.dataset.submitting = 'false';
+                if (res.ok) {
+                    overlayModal.style.display = 'none';
+                    entryForm.reset();
+                    setCreateMode();
+                    loadActivePolicies(startEditMode);
+                } else {
+                    const errData = await res.json();
+                    alert(`Deployment Error: ${errData.error || 'Server rejected request layer execution.'}`);
                 }
-            });
-        }
+            } catch (err) {
+                console.error('API endpoint transmission failure:', err);
+            } finally {
+                entryForm.dataset.submitting = 'false';
+            }
+        });
     }
 
     // ==========================================
@@ -578,7 +596,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         target.innerText = "Isolated";
                     }
                 } else if (target.classList.contains('btn-blue')) {
-                    alert(`Opening Incident logs for ${incidentID}...\nReviewing: "${description}"`);
+                    // Replace blocking popup with inline visual feedback.
+                    row.style.backgroundColor = '#f8fafc';
+                    row.cells[3].innerText = row.cells[3].innerText.trim() || 'Reviewing';
+                    target.innerText = 'Reviewed';
+                    target.style.opacity = '0.85';
                 }
             }
         });
