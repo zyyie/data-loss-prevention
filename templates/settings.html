@@ -3,16 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DLP Secure - Settings</title>
+    <title>CipherSync - Settings</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
     <div class="app-container">
+        <!-- Sidebar -->
         <aside class="sidebar">
             <div class="sidebar-header">
-                <i class="fas fa-shield-alt logo-icon"></i>
-                <span class="logo-text">DLP Secure</span>
+                <span class="logo-text">CipherSync</span>
             </div>
             <nav class="sidebar-nav">
                 <ul>
@@ -27,34 +28,146 @@
             </nav>
             <div class="sidebar-footer">
                 <ul>
-                    <li class="active"><a href="/settings"><i class="fas fa-cog"></i> Settings</a></li>
+                    <li class="has-dropdown active">
+                        <a href="/settings"><i class="fas fa-cog"></i> Settings <i class="fas fa-chevron-down" style="font-size: 0.7rem; margin-left: auto;"></i></a>
+                        <ul class="submenu">
+                            <li class="has-dropdown {% if section == 'account' %}open active{% endif %}">
+                                <a href="/settings/account" class="dropdown-toggle"><i class="fas fa-user-circle"></i> Account Settings <i class="fas fa-chevron-down" style="font-size: 0.6rem; margin-left: auto;"></i></a>
+                                <ul class="submenu">
+                                    <li><a href="/settings/account#change-password"><i class="fas fa-key"></i> Change Password</a></li>
+                                </ul>
+                            </li>
+                            <li><a href="/settings/security"><i class="fas fa-shield-alt"></i> Security Settings</a></li>
+                            <li><a href="/settings/users"><i class="fas fa-users-cog"></i> User Management Settings</a></li>
+                            <li><a href="/settings/backup"><i class="fas fa-history"></i> Backup & Logs</a></li>
+                        </ul>
+                    </li>
                     <li><a href="/support"><i class="fas fa-headset"></i> Support</a></li>
+                    <li><a href="/logout" style="color: #ff4d4d;"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
                 </ul>
             </div>
         </aside>
 
         <div class="main-wrapper">
-            <header class="top-nav">
+            <header class="top-nav{% if section == 'account' %} top-nav-change-password{% endif %}">
+                {% if section == 'account' %}
+                <a href="/settings" class="top-nav-back" aria-label="Back to settings">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <div class="top-nav-password-title">Change Password</div>
+                {% else %}
+                <div class="top-nav-left">
+                    <button id="sidebarToggle" class="sidebar-toggle">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <div class="top-nav-brand">
+                        <img src="{{ url_for('static', filename='logo.png') }}" alt="CipherSync" class="top-nav-logo">
+                    </div>
+                </div>
                 <div class="top-nav-actions">
                     <div class="notification-icon">
                         <i class="fas fa-bell"></i>
                         <span class="badge">1</span>
                     </div>
                 </div>
+                {% endif %}
             </header>
 
-            <main class="content-area">
+            <main class="content-area{% if section == 'account' %} change-password-page{% endif %}">
+                {% if section != 'account' %}
                 <div class="page-title-section">
-                    <h1>System Settings</h1>
+                    <h1>
+                        {% if section == 'security' %} Security Settings
+                        {% elif section == 'notifications' %} Notification Settings
+                        {% elif section == 'users' %} User Management
+                        {% elif section == 'backup' %} Backup & Logs
+                        {% else %} System Settings {% endif %}
+                    </h1>
                 </div>
+                {% endif %}
 
-                <div class="middle-grid" style="grid-template-columns: 1fr 1fr;">
+                <div class="middle-grid{% if section == 'account' %} change-password-layout{% endif %}"{% if section != 'account' %} style="grid-template-columns: 1fr;"{% endif %}>
+                    {% if section == 'account' %}
+                    <div id="changePasswordPanel" class="change-password-panel">
+                        <form id="changePasswordForm" class="change-password-form">
+                                <div class="password-field">
+                                    <label for="currentPassword">Current password</label>
+                                    <div class="password-input-wrap">
+                                        <input type="password" id="currentPassword" name="current_password" autocomplete="current-password" required>
+                                        <button type="button" class="password-toggle" data-target="currentPassword" aria-label="Show current password">
+                                            <i class="far fa-eye"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="password-field">
+                                    <label for="newPassword">New password</label>
+                                    <div class="password-input-wrap">
+                                        <input type="password" id="newPassword" name="new_password" autocomplete="new-password" required>
+                                        <button type="button" class="password-toggle" data-target="newPassword" aria-label="Show new password">
+                                            <i class="far fa-eye"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="password-field">
+                                    <label for="confirmPassword">Confirm the new password</label>
+                                    <div class="password-input-wrap">
+                                        <input type="password" id="confirmPassword" name="confirm_password" autocomplete="new-password" required>
+                                        <button type="button" class="password-toggle" data-target="confirmPassword" aria-label="Show confirm password">
+                                            <i class="far fa-eye"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            <button type="submit" class="btn btn-blue change-password-submit">Save password</button>
+                        </form>
+                    </div>
+                    {% elif section == 'security' %}
+                    <div class="card">
+                        <div class="card-header"><h3>Security & Authentication</h3></div>
+                        <div class="card-body">
+                            <div class="detail-item">
+                                <span class="label">2FA Authentication</span>
+                                <span class="value status-green">Enabled</span>
+                            </div>
+                            <button class="btn btn-blue" style="margin-top: 15px;">Change Password</button>
+                        </div>
+                    </div>
+                    {% elif section == 'notifications' %}
+                    <div class="card">
+                        <div class="card-header"><h3>Alert Preferences</h3></div>
+                        <div class="card-body">
+                            <div class="detail-item">
+                                <span class="label">Email Alerts</span>
+                                <span class="value">On Critical</span>
+                            </div>
+                            <button class="btn btn-blue" style="margin-top: 15px;">Update Preferences</button>
+                        </div>
+                    </div>
+                    {% elif section == 'users' %}
+                    <div class="card">
+                        <div class="card-header"><h3>User Directory</h3></div>
+                        <div class="card-body">
+                            <p>Manage system users and permissions here.</p>
+                            <button class="btn btn-blue" style="margin-top: 15px;">Add New User</button>
+                        </div>
+                    </div>
+                    {% elif section == 'backup' %}
+                    <div class="card">
+                        <div class="card-header"><h3>Data Backup</h3></div>
+                        <div class="card-body">
+                            <div class="detail-item">
+                                <span class="label">Last Backup</span>
+                                <span class="value">2024-05-26 23:00</span>
+                            </div>
+                            <button class="btn btn-blue" style="margin-top: 15px;">Run Manual Backup</button>
+                        </div>
+                    </div>
+                    {% else %}
                     <div class="card">
                         <div class="card-header"><h3>General Configuration</h3></div>
                         <div class="card-body">
                             <div class="detail-item">
                                 <span class="label">System Name</span>
-                                <span class="value">DLP-SECURE-V1</span>
+                                <span class="value">CipherSync-V1</span>
                             </div>
                             <div class="detail-item">
                                 <span class="label">Timezone</span>
@@ -63,21 +176,7 @@
                             <button class="btn btn-blue" style="margin-top: 15px;">Update General</button>
                         </div>
                     </div>
-
-                    <div class="card">
-                        <div class="card-header"><h3>Security & Authentication</h3></div>
-                        <div class="card-body">
-                            <div class="detail-item">
-                                <span class="label">2FA Authentication</span>
-                                <span class="value status-green">Enabled</span>
-                            </div>
-                            <div class="detail-item">
-                                <span class="label">API Access Keys</span>
-                                <span class="value">Active (3 Keys)</span>
-                            </div>
-                            <button class="btn btn-blue" style="margin-top: 15px;">Manage Security</button>
-                        </div>
-                    </div>
+                    {% endif %}
                 </div>
             </main>
         </div>

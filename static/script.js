@@ -1,4 +1,24 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // ==========================================
+    // SIDEBAR TOGGLE FUNCTIONALITY
+    // ==========================================
+    const sidebar = document.querySelector('.sidebar');
+    const sidebarToggle = document.getElementById('sidebarToggle');
+    
+    if (sidebar && sidebarToggle) {
+        // I-load ang saved state mula sa localStorage
+        const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+        if (isCollapsed) {
+            sidebar.classList.add('collapsed');
+        }
+
+        sidebarToggle.addEventListener('click', () => {
+            sidebar.classList.toggle('collapsed');
+            // I-save ang state sa localStorage
+            localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
+        });
+    }
+
     const API_BASE = '/api';
     const alertsList = document.getElementById('alertsList');
     const logsList = document.getElementById('activityLogsList');
@@ -470,6 +490,67 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ==========================================
+    // 9b. SIDEBAR DROPDOWN TOGGLE
+    // ==========================================
+    function initSidebarDropdowns() {
+        document.querySelectorAll('.has-dropdown > a').forEach((link) => {
+            const chevron = link.querySelector('.fa-chevron-down');
+            if (!chevron) return;
+
+            chevron.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                link.closest('.has-dropdown')?.classList.toggle('open');
+            });
+        });
+    }
+
+    // ==========================================
+    // 9c. ACCOUNT SETTINGS DROPDOWN
+    // ==========================================
+    function initPasswordToggles() {
+        document.querySelectorAll('.password-toggle').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const input = document.getElementById(btn.dataset.target);
+                const icon = btn.querySelector('i');
+                if (!input || !icon) return;
+
+                const show = input.type === 'password';
+                input.type = show ? 'text' : 'password';
+                icon.classList.toggle('fa-eye', !show);
+                icon.classList.toggle('fa-eye-slash', show);
+            });
+        });
+    }
+
+    function initChangePasswordForm() {
+        const form = document.getElementById('changePasswordForm');
+        if (!form) return;
+
+        initPasswordToggles();
+
+        if (window.location.hash === '#change-password') {
+            document.getElementById('changePasswordPanel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const newPass = document.getElementById('newPassword')?.value || '';
+            const confirmPass = document.getElementById('confirmPassword')?.value || '';
+            if (newPass !== confirmPass) {
+                alert('New password and confirmation do not match.');
+                return;
+            }
+            alert('Password updated successfully.');
+            form.reset();
+            document.querySelectorAll('.password-toggle i').forEach((icon) => {
+                icon.classList.add('fa-eye');
+                icon.classList.remove('fa-eye-slash');
+            });
+        });
+    }
+
+    // ==========================================
     // 10. SYSTEM SETTINGS PANEL RULES
     // ==========================================
     function initSettingsPage() {
@@ -537,12 +618,97 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    const notificationIcon = document.querySelector(".notification-icon");
-    if (notificationIcon) {
-        notificationIcon.addEventListener("click", () => {
-            alert("Notification: 1 unread security alert pending review.");
+    function ensureNotificationMenu(icon) {
+        let menu = icon.querySelector('.notification-menu');
+        if (!menu) {
+            icon.insertAdjacentHTML('beforeend', `
+                <div class="notification-menu" id="dashboardNotificationMenu">
+                    <div class="notification-menu-title">Notifications</div>
+                    <ul id="notificationList">
+                        <li class="notification-empty">Loading notifications...</li>
+                    </ul>
+                </div>
+            `);
+            menu = icon.querySelector('.notification-menu');
+        }
+        if (!icon.querySelector('.badge')) {
+            const bell = icon.querySelector('i');
+            const badgeHtml = '<span class="badge" id="notificationBadge">0</span>';
+            if (bell) bell.insertAdjacentHTML('afterend', badgeHtml);
+            else icon.insertAdjacentHTML('beforeend', badgeHtml);
+        }
+        return menu;
+    }
+
+    function renderNotifications(items) {
+        const list = document.getElementById('notificationList');
+        const badge = document.getElementById('notificationBadge');
+        if (!list) return;
+
+        if (!items || items.length === 0) {
+            list.innerHTML = '<li class="notification-empty">No notifications right now.</li>';
+            if (badge) badge.textContent = '0';
+            return;
+        }
+
+        list.innerHTML = items.map((item) => `
+            <li>
+                <div class="notification-item">
+                    <i class="fas ${item.icon || 'fa-bell'}"></i>
+                    <div class="notification-item-content">
+                        <div class="notification-item-category">${item.category}</div>
+                        <div class="notification-item-message">${item.message}</div>
+                        <div class="notification-item-time">${item.time || ''}</div>
+                    </div>
+                </div>
+            </li>
+        `).join('');
+
+        if (badge) badge.textContent = String(items.length);
+    }
+
+    async function fetchNotifications() {
+        const list = document.getElementById('notificationList');
+        if (!list) return;
+
+        try {
+            const response = await fetch('/api/notifications');
+            if (!response.ok) throw new Error('Failed to load notifications');
+            const data = await response.json();
+            renderNotifications(data);
+        } catch (error) {
+            console.error('Notification fetch error:', error);
+            list.innerHTML = '<li class="notification-empty">Unable to load notifications.</li>';
+        }
+    }
+
+    function initDashboardNotifications() {
+        const notificationIcon = document.querySelector('.notification-icon');
+        if (!notificationIcon) return;
+
+        ensureNotificationMenu(notificationIcon);
+        fetchNotifications();
+
+        const notificationMenu = notificationIcon.querySelector('.notification-menu');
+        notificationIcon.addEventListener('click', (e) => {
+            e.stopPropagation();
+            notificationMenu?.classList.toggle('show');
+            if (notificationMenu?.classList.contains('show')) {
+                fetchNotifications();
+            }
         });
     }
+
+    document.addEventListener('click', (e) => {
+        const notificationMenu = document.querySelector('.notification-menu.show');
+        if (!notificationMenu) return;
+        const icon = notificationMenu.closest('.notification-icon');
+        if (icon && !icon.contains(e.target)) {
+            notificationMenu.classList.remove('show');
+        }
+    });
+
+    initDashboardNotifications();
 
     // ==========================================
     // ELEMENT-BASED ROUTER EXECUTION
@@ -570,6 +736,7 @@ document.addEventListener('DOMContentLoaded', () => {
             fetchDashboardStats();
             if (alertsList) fetchAlerts();
             fetchLogs();
+            if (document.getElementById('notificationList')) fetchNotifications();
         }, 10000);
     }
 
@@ -582,4 +749,6 @@ document.addEventListener('DOMContentLoaded', () => {
     initReportsPage();
     initActivityLogsPage();
     initSettingsPage();
+    initSidebarDropdowns();
+    initChangePasswordForm();
 });

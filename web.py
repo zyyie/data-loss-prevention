@@ -1,6 +1,5 @@
-from flask import Flask, jsonify, request, render_template, send_from_directory, abort
+from flask import Flask, jsonify, request, render_template, send_from_directory, abort, session, redirect, url_for
 from flask_cors import CORS
-import pymysql
 import re
 import datetime
 import random
@@ -8,13 +7,27 @@ import os
 import csv
 from io import StringIO
 from flask import Response
+from functools import wraps
+
+from db import init_database, get_db_connection, connection_cursor, policy_column_names, threat_trend_sql, use_sqlite
 
 app = Flask(__name__)
+app.secret_key = 'ciphersync_secret_key_123'
 CORS(app)
+init_database()
+
+# --- AUTH DECORATOR ---
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
 
 # --- CONFIGURATION & SENSITIVE PATTERNS ---
-# Gamitin ang double backslash (\\) para sa Windows paths
-DOWNLOAD_FOLDER = r'C:\xampp\htdocs\data-loss-prevention-main\downloads'
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DOWNLOAD_FOLDER = os.path.join(BASE_DIR, 'downloads')
 
 PATTERNS = {
     "Credit Card": r"\b(?:\d[ -]*?){13,16}\b",
@@ -24,38 +37,84 @@ PATTERNS = {
     "Smart Home PIN": r"\b\d{4,6}\b"
 }
 
-# --- MYSQL DATABASE CONNECTION ---
-def get_db_connection():
-    return pymysql.connect(
-        host='localhost',
-        user='root',
-        password='',
-        database='dlp_db',
-        port=3308,
-        cursorclass=pymysql.cursors.DictCursor
-    )
+# --- AUTH ROUTES ---
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username_email = request.form.get('username')
+        password = request.form.get('password')
+        
+        if username_email and password:
+            # Pinapayagan ang kahit anong email at password basta hindi empty
+            session['user_id'] = 999  # Dummy ID
+            session['username'] = username_email.split('@')[0]  # Kunin ang part bago ang @
+            session['role'] = 'Administrator'
+            return redirect(url_for('serve_index'))
+        else:
+            return render_template('login.html', error="Please enter both email and password.")
+            
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('login'))
 
 # --- HTML ROUTES ---
 @app.route('/')
+@login_required
 def serve_index(): return render_template('index.html')
+
 @app.route('/threat')
+@login_required
 def serve_threat(): return render_template('threat.html')
+
 @app.route('/policy')
+@login_required
 def serve_policy(): return render_template('policy.html')
+
 @app.route('/encryption')
+@login_required
 def serve_encryption(): return render_template('encryption.html')
+
 @app.route('/logs')
+@login_required
 def serve_logs(): return render_template('logs.html')
+
 @app.route('/settings')
+@login_required
 def serve_settings(): return render_template('settings.html')
+
+@app.route('/settings/account')
+@login_required
+def serve_settings_account(): return render_template('settings.html', section='account')
+
+@app.route('/settings/security')
+@login_required
+def serve_settings_security(): return render_template('settings.html', section='security')
+
+@app.route('/settings/notifications')
+@login_required
+def serve_settings_notifications(): return render_template('settings.html', section='notifications')
+
+@app.route('/settings/users')
+@login_required
+def serve_settings_users(): return render_template('settings.html', section='users')
+
+@app.route('/settings/backup')
+@login_required
+def serve_settings_backup(): return render_template('settings.html', section='backup')
+
 @app.route('/support')
+@login_required
 def serve_support(): return render_template('support.html')
 
 @app.route('/incident')
+@login_required
 def serve_incident():
     connection = get_db_connection()
     try:
-        with connection.cursor() as cursor:
+        with connection_cursor(connection) as cursor:
             cursor.execute("SELECT * FROM incidents ORDER BY updated_at DESC")
             incidents_data = cursor.fetchall()
     except Exception as e:
@@ -65,10 +124,11 @@ def serve_incident():
     return render_template('incident.html', incidents=incidents_data)
 
 @app.route('/reports')
+@login_required
 def serve_reports():
     connection = get_db_connection()
     try:
-        with connection.cursor() as cursor:
+        with connection_cursor(connection) as cursor:
             cursor.execute("SELECT COUNT(*) as total FROM alerts")
             total_alerts = cursor.fetchone()['total']
             cursor.execute("SELECT COUNT(*) as blocked FROM alerts WHERE status = 'blocked'")
@@ -96,7 +156,7 @@ def download_file(filename):
     # Dito nagaganap ang pag-log sa database
     try:
         connection = get_db_connection()
-        with connection.cursor() as cursor:
+        with connection_cursor(connection) as cursor:
             sql = """INSERT INTO alerts (feed, activity, time, status, risk, details, source, user) 
                      VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"""
             cursor.execute(sql, (
@@ -128,7 +188,7 @@ def update_incident():
         return jsonify({'success': False, 'message': 'Missing required fields.'}), 400
     connection = get_db_connection()
     try:
-        with connection.cursor() as cursor:
+        with connection_cursor(connection) as cursor:
             cursor.execute("UPDATE incidents SET status = %s, notes = %s WHERE incident_id = %s", (new_status, notes, incident_id))
             connection.commit()
         return jsonify({'success': True, 'message': f'Incident {incident_id} successfully updated.'})
@@ -140,7 +200,7 @@ def get_stats():
     try:
         connection = get_db_connection()
         stats = {}
-        with connection.cursor() as cursor:
+        with connection_cursor(connection) as cursor:
             cursor.execute("SELECT COUNT(*) as count FROM alerts WHERE status = 'blocked'")
             stats['blocked_threats'] = cursor.fetchone()['count']
             cursor.execute("SELECT COUNT(*) as count FROM alerts WHERE risk = 'High Risk'")
@@ -158,10 +218,9 @@ def get_stats():
 def handle_policies():
     connection = get_db_connection()
     try:
-        with connection.cursor() as cursor:
+        with connection_cursor(connection) as cursor:
             if request.method == 'GET':
-                cursor.execute("DESCRIBE policies")
-                columns = [row['Field'] for row in cursor.fetchall()]
+                columns = policy_column_names(cursor)
                 name_col = 'name' if 'name' in columns else ('policy_name' if 'policy_name' in columns else columns[1])
                 date_col = 'date' if 'date' in columns else ('last_modified' if 'last_modified' in columns else None)
                 select_fields = f"id, {name_col}, category, status"
@@ -176,11 +235,14 @@ def handle_policies():
                 return jsonify(processed_policies)
             if request.method == 'POST':
                 data = request.json
-                cursor.execute("DESCRIBE policies")
-                columns = [row['Field'] for row in cursor.fetchall()]
+                columns = policy_column_names(cursor)
                 name_col = 'name' if 'name' in columns else ('policy_name' if 'policy_name' in columns else columns[1])
                 date_col = 'date' if 'date' in columns else ('last_modified' if 'last_modified' in columns else None)
-                sql = f"INSERT INTO policies ({name_col}, category, status{', ' + date_col if date_col else ''}) VALUES (%s, %s, %s{', NOW()' if date_col else ''})"
+                if date_col:
+                    now_expr = "datetime('now')" if use_sqlite() else 'NOW()'
+                    sql = f"INSERT INTO policies ({name_col}, category, status, {date_col}) VALUES (%s, %s, %s, {now_expr})"
+                else:
+                    sql = f"INSERT INTO policies ({name_col}, category, status) VALUES (%s, %s, %s)"
                 cursor.execute(sql, (data['policy_name'], data['category'], data['status']))
                 connection.commit()
                 return jsonify({"message": "Policy deployed successfully!"}), 201
@@ -191,7 +253,7 @@ def handle_policies():
 def get_activity_logs():
     try:
         connection = get_db_connection()
-        with connection.cursor() as cursor:
+        with connection_cursor(connection) as cursor:
             cursor.execute("SELECT activity, time, status FROM alerts ORDER BY id DESC LIMIT 5")
             logs = cursor.fetchall()
             processed_logs = []
@@ -207,7 +269,7 @@ def get_activity_logs():
 def get_all_logs():
     connection = get_db_connection()
     try:
-        with connection.cursor() as cursor:
+        with connection_cursor(connection) as cursor:
             cursor.execute("SELECT time, user, activity, source, status FROM alerts ORDER BY time DESC")
             logs = cursor.fetchall()
         return jsonify(logs)
@@ -218,7 +280,7 @@ def get_all_logs():
 def export_logs():
     connection = get_db_connection()
     try:
-        with connection.cursor() as cursor:
+        with connection_cursor(connection) as cursor:
             # Query base sa hitsura ng database mo sa image
             cursor.execute("SELECT time, user, activity, source, status FROM alerts ORDER BY id DESC")
             logs = cursor.fetchall()
@@ -241,7 +303,7 @@ def export_logs():
 def get_devices():
     try:
         connection = get_db_connection()
-        with connection.cursor() as cursor:
+        with connection_cursor(connection) as cursor:
             cursor.execute("SELECT * FROM devices")
             devices_from_db = cursor.fetchall()
         connection.close()
@@ -252,12 +314,84 @@ def get_devices():
 def get_alerts():
     try:
         connection = get_db_connection()
-        with connection.cursor() as cursor:
+        with connection_cursor(connection) as cursor:
             cursor.execute("SELECT * FROM alerts ORDER BY id DESC")
             alerts_from_db = cursor.fetchall()
         connection.close()
         return jsonify(alerts_from_db)
     except Exception as e: return jsonify({"error": str(e)}), 500
+
+
+def _format_alert_time(value):
+    if isinstance(value, (datetime.datetime, datetime.date)):
+        return value.strftime('%Y-%m-%d %H:%M:%S')
+    return str(value) if value else ''
+
+
+def _notification_from_alert(alert):
+    activity = (alert.get('activity') or '').lower()
+    threat_type = (alert.get('threat_type') or '').lower()
+    risk = (alert.get('risk') or '').lower()
+    status = (alert.get('status') or '').lower()
+
+    if risk == 'high risk' or threat_type in ('data leaks', 'malware', 'phishing'):
+        category = 'Real-time breach alert'
+        icon = 'fa-shield-virus'
+    elif status == 'blocked' or 'malware' in activity or 'block' in activity:
+        category = 'System alert notification'
+        icon = 'fa-exclamation-circle'
+    else:
+        category = 'Email alerts ON/OFF'
+        icon = 'fa-envelope'
+
+    message = alert.get('details') or alert.get('activity') or 'Security event detected.'
+    return {
+        'category': category,
+        'message': message,
+        'time': _format_alert_time(alert.get('time')),
+        'icon': icon,
+    }
+
+
+@app.route('/api/notifications', methods=['GET'])
+@login_required
+def get_notifications():
+    try:
+        connection = get_db_connection()
+        with connection_cursor(connection) as cursor:
+            cursor.execute(
+                "SELECT activity, details, time, risk, threat_type, status "
+                "FROM alerts ORDER BY id DESC LIMIT 8"
+            )
+            rows = cursor.fetchall()
+        connection.close()
+
+        if rows:
+            return jsonify([_notification_from_alert(row) for row in rows])
+
+        return jsonify([
+            {
+                'category': 'Email alerts ON/OFF',
+                'message': 'Email alert channel is enabled for critical events.',
+                'time': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                'icon': 'fa-envelope',
+            },
+            {
+                'category': 'System alert notification',
+                'message': 'No new system alerts at the moment.',
+                'time': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                'icon': 'fa-exclamation-circle',
+            },
+            {
+                'category': 'Real-time breach alert',
+                'message': 'Real-time monitoring is active.',
+                'time': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                'icon': 'fa-shield-virus',
+            },
+        ])
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 
 @app.route('/api/simulate-smart-home', methods=['POST'])
 def simulate_event():
@@ -275,7 +409,7 @@ def simulate_event():
     
     try:
         connection = get_db_connection()
-        with connection.cursor() as cursor:
+        with connection_cursor(connection) as cursor:
             sql = "INSERT INTO alerts (feed, activity, time, status, risk, details, source, user, threat_type, threat_actor) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
             cursor.execute(sql, (event["feed"], event["activity"], current_time, event["status"], event["risk"], event["details"], source_device, event["user"], event["threat_type"], event["threat_actor"]))
             connection.commit()
@@ -288,7 +422,7 @@ def simulate_event():
 def get_threat_distribution():
     try:
         connection = get_db_connection()
-        with connection.cursor() as cursor:
+        with connection_cursor(connection) as cursor:
             cursor.execute("SELECT threat_type, COUNT(*) as total FROM alerts WHERE threat_type IS NOT NULL GROUP BY threat_type")
             results = cursor.fetchall()
         connection.close()
@@ -299,7 +433,7 @@ def get_threat_distribution():
 def get_top_actors():
     try:
         connection = get_db_connection()
-        with connection.cursor() as cursor:
+        with connection_cursor(connection) as cursor:
             cursor.execute("SELECT threat_actor AS actor, COUNT(*) as incidents, MAX(risk) as max_risk FROM alerts WHERE threat_actor IS NOT NULL AND threat_actor != '' GROUP BY threat_actor ORDER BY incidents DESC LIMIT 5")
             results = cursor.fetchall()
         connection.close()
@@ -310,8 +444,8 @@ def get_top_actors():
 def get_threat_trend():
     try:
         connection = get_db_connection()
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT DATE_FORMAT(time, '%a') as day, COUNT(*) as total FROM alerts WHERE time >= DATE_SUB(NOW(), INTERVAL 5 DAY) GROUP BY DATE(time) ORDER BY DATE(time) ASC")
+        with connection_cursor(connection) as cursor:
+            cursor.execute(threat_trend_sql())
             results = cursor.fetchall()
         connection.close()
         labels = [r['day'] for r in results] if results else ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
@@ -322,7 +456,7 @@ def get_threat_trend():
 
 
 if __name__ == '__main__':
-    if not os.path.exists('templates'): os.makedirs('templates')
-    if not os.path.exists(DOWNLOAD_FOLDER): os.makedirs('downloads')
+    os.makedirs(os.path.join(BASE_DIR, 'templates'), exist_ok=True)
+    os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
     app.run(host='0.0.0.0', port=5000, debug=True)
 

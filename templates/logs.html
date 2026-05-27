@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DLP Secure - Activity Logs</title>
+    <title>CipherSync - Activity Logs</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -15,8 +16,7 @@
     <div class="app-container">
         <aside class="sidebar">
             <div class="sidebar-header">
-                <i class="fas fa-shield-alt logo-icon"></i>
-                <span class="logo-text">DLP Secure</span>
+                <span class="logo-text">CipherSync</span>
             </div>
             <nav class="sidebar-nav">
                 <ul>
@@ -31,13 +31,42 @@
             </nav>
             <div class="sidebar-footer">
                 <ul>
-                    <li><a href="/settings"><i class="fas fa-cog"></i> Settings</a></li>
+                    <li class="has-dropdown">
+                        <a href="/settings"><i class="fas fa-cog"></i> Settings <i class="fas fa-chevron-down" style="font-size: 0.7rem; margin-left: auto;"></i></a>
+                        <ul class="submenu">
+                            <li class="has-dropdown">
+                                <a href="/settings/account" class="dropdown-toggle"><i class="fas fa-user-circle"></i> Account Settings <i class="fas fa-chevron-down" style="font-size: 0.6rem; margin-left: auto;"></i></a>
+                                <ul class="submenu">
+                                    <li><a href="/settings/account#change-password"><i class="fas fa-key"></i> Change Password</a></li>
+                                </ul>
+                            </li>
+                            <li><a href="/settings/security"><i class="fas fa-shield-alt"></i> Security Settings</a></li>
+                            <li><a href="/settings/users"><i class="fas fa-users-cog"></i> User Management Settings</a></li>
+                            <li><a href="/settings/backup"><i class="fas fa-history"></i> Backup & Logs</a></li>
+                        </ul>
+                    </li>
                     <li><a href="/support"><i class="fas fa-headset"></i> Support</a></li>
+                    <li><a href="/logout" style="color: #ff4d4d;"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
                 </ul>
             </div>
         </aside>
 
         <div class="main-wrapper">
+            <header class="top-nav" style="background-color: #1e3a5f; display: flex; justify-content: space-between; align-items: center; padding: 0 30px;">
+                <div class="top-nav-left">
+                    <button id="sidebarToggle" class="sidebar-toggle">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <div class="top-nav-brand">
+                        <img src="{{ url_for('static', filename='logo.png') }}" alt="CipherSync" class="top-nav-logo">
+                    </div>
+                </div>
+                <div class="top-nav-actions">
+                    <div class="notification-icon" style="color: white; cursor: pointer;">
+                        <i class="fas fa-bell"></i>
+                    </div>
+                </div>
+            </header>
             <main class="content-area">
                 <div id="ui-toast"><span id="toast-message"></span></div>
 
@@ -74,6 +103,7 @@
         </div>
     </div>
 
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
     <script>
         // Load data on page load
         fetch('/api/logs/all')

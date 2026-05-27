@@ -4,23 +4,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DLP Secure - Policy Management</title>
+    <title>CipherSync - Policy Management</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         /* CSS to perfectly center the UI on laptop and desktop screens */
-        .app-container {
-            display: flex;
-            min-height: 100vh;
-            width: 100%;
-        }
-
         .main-content {
             flex: 1;
             display: flex;
             flex-direction: column;
-            align-items: center;
-            /* Centers items horizontally */
             padding: 30px;
             background-color: #f8fafc;
             /* Standard subtle dashboard background */
@@ -31,18 +24,17 @@
         .top-header,
         .content-body {
             width: 100%;
-            max-width: 1100px;
-            /* Optimized screen bounds for general laptops */
             margin: 0 auto;
             /* Centers the layout container */
         }
 
         .top-header {
+            height: 110px;
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 25px;
-            padding-bottom: 15px;
+            padding: 0 40px;
             border-bottom: 1px solid #e2e8f0;
         }
 
@@ -60,8 +52,7 @@
     <div class="app-container">
         <aside class="sidebar">
             <div class="sidebar-header">
-                <i class="fas fa-shield-alt logo-icon"></i>
-                <span class="logo-text">DLP Secure</span>
+                <span class="logo-text">CipherSync</span>
             </div>
             <nav class="sidebar-nav">
                 <ul>
@@ -76,14 +67,36 @@
             </nav>
             <div class="sidebar-footer">
                 <ul>
-                    <li><a href="/settings"><i class="fas fa-cog"></i> Settings</a></li>
+                    <li class="has-dropdown">
+                        <a href="/settings"><i class="fas fa-cog"></i> Settings <i class="fas fa-chevron-down" style="font-size: 0.7rem; margin-left: auto;"></i></a>
+                        <ul class="submenu">
+                            <li class="has-dropdown">
+                                <a href="/settings/account" class="dropdown-toggle"><i class="fas fa-user-circle"></i> Account Settings <i class="fas fa-chevron-down" style="font-size: 0.6rem; margin-left: auto;"></i></a>
+                                <ul class="submenu">
+                                    <li><a href="/settings/account#change-password"><i class="fas fa-key"></i> Change Password</a></li>
+                                </ul>
+                            </li>
+                            <li><a href="/settings/security"><i class="fas fa-shield-alt"></i> Security Settings</a></li>
+                            <li><a href="/settings/users"><i class="fas fa-users-cog"></i> User Management Settings</a></li>
+                            <li><a href="/settings/backup"><i class="fas fa-history"></i> Backup & Logs</a></li>
+                        </ul>
+                    </li>
                     <li><a href="/support"><i class="fas fa-headset"></i> Support</a></li>
+                    <li><a href="/logout" style="color: #ff4d4d;"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
                 </ul>
             </div>
         </aside>
 
         <div class="main-content">
             <header class="top-header">
+                <div class="top-nav-left">
+                    <button id="sidebarToggle" class="sidebar-toggle" style="color: #1e3a5f;">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <div class="top-nav-brand">
+                        <img src="{{ url_for('static', filename='logo.png') }}" alt="CipherSync" class="top-nav-logo">
+                    </div>
+                </div>
                 <div class="page-title-section">
                     <h1>Policy Management</h1>
                 </div>
