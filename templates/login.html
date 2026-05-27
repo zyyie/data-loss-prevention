@@ -27,6 +27,7 @@
             max-width: 420px;
             text-align: center;
             border: 1px solid rgba(255, 255, 255, 0.15);
+            -webkit-backdrop-filter: blur(10px);
             backdrop-filter: blur(10px);
         }
 
@@ -111,6 +112,23 @@
             text-decoration: underline;
         }
 
+        .signup-row {
+            margin-top: 16px;
+            text-align: center;
+            color: #94a3b8;
+            font-size: 0.95rem;
+        }
+
+        .signup-row a {
+            color: #3b82f6;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .signup-row a:hover {
+            text-decoration: underline;
+        }
+
         .btn-login {
             width: 100%;
             padding: 16px;
@@ -139,6 +157,144 @@
             font-size: 0.85rem;
             border: 1px solid #fecaca;
         }
+
+        .success-message {
+            background-color: #dcfce7;
+            color: #166534;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            font-size: 0.85rem;
+            border: 1px solid #bbf7d0;
+        }
+
+        .forgot-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(2, 6, 23, 0.75);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .forgot-overlay.open {
+            display: flex;
+        }
+
+        .forgot-modal {
+            background: radial-gradient(circle at top left, #1e3a5f 0%, #152a42 100%);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 20px;
+            padding: 28px;
+            width: 100%;
+            max-width: 400px;
+            text-align: left;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+        }
+
+        .forgot-modal h2 {
+            color: #fff;
+            margin: 0 0 8px;
+            font-size: 1.35rem;
+        }
+
+        .forgot-modal p {
+            color: #94a3b8;
+            font-size: 0.9rem;
+            margin: 0 0 20px;
+        }
+
+        .forgot-close {
+            float: right;
+            background: none;
+            border: none;
+            color: #94a3b8;
+            font-size: 1.25rem;
+            cursor: pointer;
+            margin: -8px -8px 0 0;
+        }
+
+        .forgot-close:hover {
+            color: #fff;
+        }
+
+        .forgot-step {
+            display: none;
+        }
+
+        .forgot-step.active {
+            display: block;
+        }
+
+        .btn-forgot {
+            width: 100%;
+            padding: 14px;
+            background-color: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 8px;
+        }
+
+        .btn-forgot:hover {
+            background-color: #2563eb;
+        }
+
+        .btn-forgot:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .btn-forgot-secondary {
+            width: 100%;
+            padding: 12px;
+            background: transparent;
+            color: #94a3b8;
+            border: 1px solid #334155;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .btn-forgot-secondary:hover {
+            color: #e2e8f0;
+            border-color: #475569;
+        }
+
+        .forgot-feedback {
+            font-size: 0.85rem;
+            margin-bottom: 12px;
+            padding: 8px 10px;
+            border-radius: 6px;
+            display: none;
+        }
+
+        .forgot-feedback.error {
+            display: block;
+            background: #fee2e2;
+            color: #dc2626;
+            border: 1px solid #fecaca;
+        }
+
+        .forgot-feedback.success {
+            display: block;
+            background: #dcfce7;
+            color: #166534;
+            border: 1px solid #bbf7d0;
+        }
+
+        .dev-code-hint {
+            font-size: 0.8rem;
+            color: #fbbf24;
+            margin-top: 8px;
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -151,6 +307,11 @@
         {% if error %}
         <div class="error-message">
             <i class="fas fa-exclamation-circle"></i> {{ error }}
+        </div>
+        {% endif %}
+        {% if registered %}
+        <div class="success-message">
+            <i class="fas fa-check-circle"></i> Account created successfully. You can now sign in.
         </div>
         {% endif %}
 
@@ -169,11 +330,187 @@
                 <label class="remember-me">
                     <input type="checkbox" name="remember"> Remember Me
                 </label>
-                <a href="#" class="forgot-password">Forgot Password?</a>
+                <a href="#" class="forgot-password" id="forgotPasswordLink">Forgot Password?</a>
             </div>
 
             <button type="submit" class="btn-login">Sign In</button>
         </form>
+        <div class="signup-row">
+            No account yet? <a href="/signup">Sign Up</a>
+        </div>
     </div>
+
+    <div class="forgot-overlay" id="forgotOverlay" aria-hidden="true">
+        <div class="forgot-modal" role="dialog" aria-labelledby="forgotModalTitle">
+            <button type="button" class="forgot-close" id="forgotCloseBtn" aria-label="Close">&times;</button>
+            <h2 id="forgotModalTitle">Reset password</h2>
+            <p id="forgotModalDesc">Enter your registered email or phone number to receive a verification code.</p>
+            <div class="forgot-feedback" id="forgotFeedback"></div>
+
+            <div class="forgot-step active" id="forgotStepContact">
+                <div class="form-group">
+                    <label for="forgotContact">Email or phone number</label>
+                    <input type="text" id="forgotContact" placeholder="e.g. admin@ciphersync.com or 09171234567" autocomplete="email">
+                </div>
+                <button type="button" class="btn-forgot" id="forgotSendBtn">Send verification code</button>
+                <button type="button" class="btn-forgot-secondary" id="forgotCancelBtn">Cancel</button>
+            </div>
+
+            <div class="forgot-step" id="forgotStepVerify">
+                <div class="form-group">
+                    <label for="forgotCode">Verification code</label>
+                    <input type="text" id="forgotCode" placeholder="6-digit code" maxlength="6" inputmode="numeric" autocomplete="one-time-code">
+                </div>
+                <p class="dev-code-hint" id="devCodeHint"></p>
+                <button type="button" class="btn-forgot" id="forgotVerifyBtn">Verify &amp; continue</button>
+                <button type="button" class="btn-forgot-secondary" id="forgotResendBtn">Resend code</button>
+                <button type="button" class="btn-forgot-secondary" id="forgotBackBtn">Back</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            const loginError = {{ error|tojson if error else 'null' }};
+            if (loginError) {
+                alert(loginError);
+            }
+
+            const overlay = document.getElementById('forgotOverlay');
+            const link = document.getElementById('forgotPasswordLink');
+            const closeBtn = document.getElementById('forgotCloseBtn');
+            const cancelBtn = document.getElementById('forgotCancelBtn');
+            const feedback = document.getElementById('forgotFeedback');
+            const stepContact = document.getElementById('forgotStepContact');
+            const stepVerify = document.getElementById('forgotStepVerify');
+            const modalDesc = document.getElementById('forgotModalDesc');
+            const contactInput = document.getElementById('forgotContact');
+            const codeInput = document.getElementById('forgotCode');
+            const devCodeHint = document.getElementById('devCodeHint');
+            let savedContact = '';
+
+            function showFeedback(message, type) {
+                feedback.textContent = message;
+                feedback.className = 'forgot-feedback ' + type;
+            }
+
+            function clearFeedback() {
+                feedback.textContent = '';
+                feedback.className = 'forgot-feedback';
+            }
+
+            function openModal() {
+                clearFeedback();
+                savedContact = '';
+                contactInput.value = '';
+                codeInput.value = '';
+                devCodeHint.style.display = 'none';
+                stepContact.classList.add('active');
+                stepVerify.classList.remove('active');
+                modalDesc.textContent = 'Enter your registered email or phone number to receive a verification code.';
+                overlay.classList.add('open');
+                overlay.setAttribute('aria-hidden', 'false');
+                contactInput.focus();
+            }
+
+            function closeModal() {
+                overlay.classList.remove('open');
+                overlay.setAttribute('aria-hidden', 'true');
+            }
+
+            function goToVerifyStep() {
+                stepContact.classList.remove('active');
+                stepVerify.classList.add('active');
+                modalDesc.textContent = 'Enter the verification code sent to your email or phone.';
+                codeInput.focus();
+            }
+
+            async function sendCode() {
+                const contact = contactInput.value.trim();
+                if (!contact) {
+                    showFeedback('Please enter your email or phone number.', 'error');
+                    return;
+                }
+                clearFeedback();
+                const btn = document.getElementById('forgotSendBtn');
+                btn.disabled = true;
+                try {
+                    const res = await fetch('/api/forgot-password/send', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ contact }),
+                    });
+                    const data = await res.json();
+                    if (!res.ok || !data.success) {
+                        showFeedback(data.error || 'Could not send code.', 'error');
+                        return;
+                    }
+                    savedContact = contact;
+                    showFeedback(data.message, 'success');
+                    if (data.dev_code) {
+                        devCodeHint.textContent = 'Demo code: ' + data.dev_code;
+                        devCodeHint.style.display = 'block';
+                    }
+                    goToVerifyStep();
+                } catch {
+                    showFeedback('Network error. Please try again.', 'error');
+                } finally {
+                    btn.disabled = false;
+                }
+            }
+
+            async function verifyCode() {
+                const code = codeInput.value.trim();
+                if (!savedContact || !code) {
+                    showFeedback('Enter the 6-digit verification code.', 'error');
+                    return;
+                }
+                clearFeedback();
+                const btn = document.getElementById('forgotVerifyBtn');
+                btn.disabled = true;
+                try {
+                    const res = await fetch('/api/forgot-password/verify', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ contact: savedContact, code }),
+                    });
+                    const data = await res.json();
+                    if (!res.ok || !data.success) {
+                        showFeedback(data.error || 'Verification failed.', 'error');
+                        return;
+                    }
+                    window.location.href = data.redirect || '/settings/account#change-password';
+                } catch {
+                    showFeedback('Network error. Please try again.', 'error');
+                } finally {
+                    btn.disabled = false;
+                }
+            }
+
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                openModal();
+            });
+            closeBtn.addEventListener('click', closeModal);
+            cancelBtn.addEventListener('click', closeModal);
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) closeModal();
+            });
+            document.getElementById('forgotSendBtn').addEventListener('click', sendCode);
+            document.getElementById('forgotVerifyBtn').addEventListener('click', verifyCode);
+            document.getElementById('forgotResendBtn').addEventListener('click', () => {
+                stepVerify.classList.remove('active');
+                stepContact.classList.add('active');
+                clearFeedback();
+                sendCode();
+            });
+            document.getElementById('forgotBackBtn').addEventListener('click', () => {
+                stepVerify.classList.remove('active');
+                stepContact.classList.add('active');
+                clearFeedback();
+                codeInput.value = '';
+            });
+        })();
+    </script>
 </body>
 </html>

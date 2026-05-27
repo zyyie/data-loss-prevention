@@ -67,6 +67,10 @@ class _SQLiteCursor:
     def __init__(self, cursor):
         self._cursor = cursor
 
+    @property
+    def rowcount(self):
+        return getattr(self._cursor, 'rowcount', -1)
+
     def execute(self, sql, params=None):
         if params is not None:
             sql = sql.replace('%s', '?')
@@ -165,6 +169,7 @@ def _create_sqlite_schema(conn):
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE,
             email TEXT UNIQUE,
+            phone TEXT,
             password TEXT,
             role TEXT
         );
@@ -206,8 +211,8 @@ def _seed_sqlite(conn):
     cursor.execute('SELECT COUNT(*) FROM users')
     if cursor.fetchone()[0] == 0:
         cursor.execute(
-            "INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)",
-            ('admin', 'admin@ciphersync.com', 'admin123', 'Administrator')
+            "INSERT INTO users (username, email, phone, password, role) VALUES (?, ?, ?, ?, ?)",
+            ('admin', 'admin@ciphersync.com', '09171234567', 'admin123', 'Administrator')
         )
 
     cursor.execute('SELECT COUNT(*) FROM incidents')
@@ -268,7 +273,23 @@ def init_database():
     conn = sqlite3.connect(SQLITE_PATH)
     try:
         _create_sqlite_schema(conn)
+        _migrate_sqlite_users_phone(conn)
         _seed_sqlite(conn)
     finally:
         conn.close()
     print(f'[DLP] MySQL unavailable — using SQLite at {SQLITE_PATH}')
+
+
+def _migrate_sqlite_users_phone(conn):
+    """Add phone column to existing SQLite databases."""
+    cursor = conn.cursor()
+    cursor.execute('PRAGMA table_info(users)')
+    columns = [row[1] for row in cursor.fetchall()]
+    if 'phone' not in columns:
+        cursor.execute('ALTER TABLE users ADD COLUMN phone TEXT')
+        conn.commit()
+    cursor.execute(
+        "UPDATE users SET phone = ? WHERE username = ? AND (phone IS NULL OR phone = '')",
+        ('09171234567', 'admin'),
+    )
+    conn.commit()

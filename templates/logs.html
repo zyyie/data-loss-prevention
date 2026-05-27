@@ -52,27 +52,13 @@
         </aside>
 
         <div class="main-wrapper">
-            <header class="top-nav" style="background-color: #1e3a5f; display: flex; justify-content: space-between; align-items: center; padding: 0 30px;">
-                <div class="top-nav-left">
-                    <button id="sidebarToggle" class="sidebar-toggle">
-                        <i class="fas fa-bars"></i>
-                    </button>
-                    <div class="top-nav-brand">
-                        <img src="{{ url_for('static', filename='logo.png') }}" alt="CipherSync" class="top-nav-logo">
-                    </div>
-                </div>
-                <div class="top-nav-actions">
-                    <div class="notification-icon" style="color: white; cursor: pointer;">
-                        <i class="fas fa-bell"></i>
-                    </div>
+            <header class="top-nav top-nav-title-only">
+                <div class="page-title-section">
+                    <h1>Activity Logs</h1>
                 </div>
             </header>
             <main class="content-area">
                 <div id="ui-toast"><span id="toast-message"></span></div>
-
-                <div class="page-title-section">
-                    <h1>Activity Logs</h1>
-                </div>
 
                 <div class="card">
                     <div class="card-header">
@@ -111,6 +97,16 @@
             .then(data => {
                 const tbody = document.querySelector('tbody');
                 tbody.innerHTML = '';
+                if (!data || data.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="5" style="text-align:center; color:#64748b; padding:18px;">
+                                No audit events captured in the selected period.
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
                 data.forEach(log => {
                     tbody.innerHTML += `
                         <tr>
@@ -144,12 +140,12 @@
                     a.click();
                     a.remove();
                     
-                    msg.textContent = "Audit Trail Exported Successfully!";
+                    msg.textContent = "Audit trail exported successfully.";
                 } else {
-                    msg.textContent = "Export failed!";
+                    msg.textContent = "CSV export failed. Verify API access and retry.";
                 }
             } catch (error) {
-                msg.textContent = "Error during export.";
+                msg.textContent = "Could not reach export endpoint. Check network/database status.";
             }
 
             setTimeout(() => { toast.style.display = 'none'; }, 3000);

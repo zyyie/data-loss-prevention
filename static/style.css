@@ -1,6 +1,6 @@
 :root {
-    --sidebar-bg: #0f172a;
-    --sidebar-hover: #1e293b;
+    --sidebar-bg: #13243f;
+    --sidebar-hover: #1e355a;
     --main-bg: #163a61;
     --top-nav-bg: #0f172a;
     --card-bg: #1e293b;
@@ -168,10 +168,19 @@ body {
 
 .content-area.change-password-page {
     background-color: var(--main-bg);
-    min-height: calc(100vh - 88px);
+    min-height: calc(100vh - 130px);
     display: flex;
     flex-direction: column;
     padding: 0;
+}
+
+.change-password-reset-notice {
+    color: #4ade80;
+    font-size: 0.95rem;
+    margin: 0 0 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 
 .change-password-panel {
@@ -317,17 +326,37 @@ body {
 
 /* Top Nav Styling */
 .top-nav {
-    height: 110px;
+    height: 130px;
     background-color: var(--top-nav-bg);
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0 40px;
+    padding: 0 48px;
     border-bottom: 1px solid var(--border-color);
     position: sticky;
     top: 0;
     z-index: 100;
     width: 100%;
+}
+
+/* Title-only centered navbar (Policy Management style) */
+.top-nav.top-nav-title-only {
+    justify-content: center;
+    padding: 0;
+    background-color: var(--top-nav-bg);
+    height: 110px;
+}
+
+.top-nav.top-nav-title-only .page-title-section {
+    margin: 0;
+    text-align: center;
+}
+
+.top-nav.top-nav-title-only .page-title-section h1 {
+    margin: 0;
+    color: var(--text-white);
+    font-size: 1.8rem;
+    font-weight: 700;
 }
 
 .top-nav-change-password {
@@ -371,7 +400,7 @@ body {
 }
 
 .top-nav-logo {
-    height: 70px;
+    height: 82px;
     width: auto;
     object-fit: contain;
 }
@@ -380,7 +409,7 @@ body {
     background: transparent;
     border: none;
     color: var(--text-white);
-    font-size: 1.8rem;
+    font-size: 2.1rem;
     cursor: pointer;
     padding: 10px;
     border-radius: 8px;
@@ -628,7 +657,7 @@ body {
     align-items: center;
     flex: 1;
     width: 100%;
-    min-height: calc(100vh - 88px);
+    min-height: calc(100vh - 130px);
     margin-bottom: 0;
     gap: 0;
     grid-template-columns: unset;

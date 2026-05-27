@@ -89,8 +89,14 @@
                 <div class="middle-grid{% if section == 'account' %} change-password-layout{% endif %}"{% if section != 'account' %} style="grid-template-columns: 1fr;"{% endif %}>
                     {% if section == 'account' %}
                     <div id="changePasswordPanel" class="change-password-panel">
-                        <form id="changePasswordForm" class="change-password-form">
-                                <div class="password-field">
+                        {% if password_reset %}
+                        <p class="change-password-reset-notice" id="passwordResetNotice">
+                            <i class="fas fa-check-circle"></i> Verified. Set your new password below.
+                        </p>
+                        {% endif %}
+                        <form id="changePasswordForm" class="change-password-form" data-password-reset="{{ 'true' if password_reset else 'false' }}">
+                                {% if not password_reset %}
+                                <div class="password-field" id="currentPasswordField">
                                     <label for="currentPassword">Current password</label>
                                     <div class="password-input-wrap">
                                         <input type="password" id="currentPassword" name="current_password" autocomplete="current-password" required>
@@ -99,6 +105,7 @@
                                         </button>
                                     </div>
                                 </div>
+                                {% endif %}
                                 <div class="password-field">
                                     <label for="newPassword">New password</label>
                                     <div class="password-input-wrap">
@@ -128,7 +135,7 @@
                                 <span class="label">2FA Authentication</span>
                                 <span class="value status-green">Enabled</span>
                             </div>
-                            <button class="btn btn-blue" style="margin-top: 15px;">Change Password</button>
+                            <a href="/settings/account#change-password" class="btn btn-blue" style="margin-top: 15px; display: inline-block; text-decoration: none;">Change Password</a>
                         </div>
                     </div>
                     {% elif section == 'notifications' %}

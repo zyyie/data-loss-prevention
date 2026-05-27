@@ -5,6 +5,8 @@ import datetime
 import random
 import os
 import csv
+import secrets
+import time
 from io import StringIO
 from flask import Response
 from functools import wraps
@@ -15,6 +17,66 @@ app = Flask(__name__)
 app.secret_key = 'ciphersync_secret_key_123'
 CORS(app)
 init_database()
+
+PASSWORD_RESET_CODE_TTL = 600  # 10 minutes
+_password_reset_store = {}
+
+
+def _normalize_phone(value):
+    return re.sub(r'\D', '', value or '')
+
+
+def _find_user_by_contact(contact):
+    contact = (contact or '').strip()
+    if not contact:
+        return None
+    connection = get_db_connection()
+    try:
+        with connection_cursor(connection) as cursor:
+            cursor.execute(
+                "SELECT id, username, email, phone, role FROM users WHERE email = %s OR username = %s",
+                (contact, contact),
+            )
+            user = cursor.fetchone()
+            if user:
+                return user
+            phone_digits = _normalize_phone(contact)
+            if not phone_digits:
+                return None
+            cursor.execute("SELECT id, username, email, phone, role FROM users WHERE phone IS NOT NULL")
+            for row in cursor.fetchall():
+                if _normalize_phone(row.get('phone')) == phone_digits:
+                    return row
+    finally:
+        connection.close()
+    return None
+
+
+def _generate_reset_code():
+    return f'{secrets.randbelow(1_000_000):06d}'
+
+
+def _store_reset_code(contact_key, user):
+    code = _generate_reset_code()
+    _password_reset_store[contact_key] = {
+        'code': code,
+        'expires': time.time() + PASSWORD_RESET_CODE_TTL,
+        'user_id': user['id'],
+        'username': user['username'],
+        'role': user.get('role') or 'Administrator',
+    }
+    return code
+
+
+def _get_reset_entry(contact_key):
+    entry = _password_reset_store.get(contact_key)
+    if not entry:
+        return None
+    if time.time() > entry['expires']:
+        _password_reset_store.pop(contact_key, None)
+        return None
+    return entry
+
 
 # --- AUTH DECORATOR ---
 def login_required(f):
@@ -41,24 +103,179 @@ PATTERNS = {
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        username_email = request.form.get('username')
-        password = request.form.get('password')
-        
-        if username_email and password:
-            # Pinapayagan ang kahit anong email at password basta hindi empty
-            session['user_id'] = 999  # Dummy ID
-            session['username'] = username_email.split('@')[0]  # Kunin ang part bago ang @
-            session['role'] = 'Administrator'
-            return redirect(url_for('serve_index'))
-        else:
-            return render_template('login.html', error="Please enter both email and password.")
-            
-    return render_template('login.html')
+        username_email = (request.form.get('username') or '').strip()
+        password = (request.form.get('password') or '').strip()
+
+        if not username_email or not password:
+            return render_template('login.html', error="Please enter both email/username and password.")
+
+        connection = get_db_connection()
+        try:
+            with connection_cursor(connection) as cursor:
+                cursor.execute(
+                    "SELECT id, username, role, password FROM users WHERE username = %s OR email = %s",
+                    (username_email, username_email),
+                )
+                user = cursor.fetchone()
+        finally:
+            connection.close()
+
+        if not user:
+            return render_template('login.html', error="Account not found. Please sign up first before signing in.")
+        if user.get('password') != password:
+            return render_template('login.html', error="Invalid password. Please try again.")
+
+        session['user_id'] = user['id']
+        session['username'] = user['username']
+        session['role'] = user.get('role') or 'Administrator'
+        session.pop('password_reset', None)
+        return redirect(url_for('serve_index'))
+
+    registered = request.args.get('registered') == '1'
+    return render_template('login.html', registered=registered)
+
+
+@app.route('/signup', methods=['GET', 'POST'])
+def signup():
+    if request.method == 'POST':
+        username = (request.form.get('username') or '').strip()
+        email = (request.form.get('email') or '').strip().lower()
+        phone = (request.form.get('phone') or '').strip()
+        password = (request.form.get('password') or '').strip()
+        confirm_password = (request.form.get('confirm_password') or '').strip()
+
+        if not username or not email or not phone or not password or not confirm_password:
+            return render_template('signup.html', error='Please complete all required fields.')
+        if password != confirm_password:
+            return render_template('signup.html', error='Password and confirmation do not match.')
+        if len(password) < 6:
+            return render_template('signup.html', error='Password must be at least 6 characters.')
+
+        normalized_phone = _normalize_phone(phone)
+        if len(normalized_phone) < 10:
+            return render_template('signup.html', error='Please provide a valid phone number.')
+
+        connection = get_db_connection()
+        try:
+            with connection_cursor(connection) as cursor:
+                cursor.execute(
+                    "SELECT id FROM users WHERE username = %s OR email = %s",
+                    (username, email),
+                )
+                existing = cursor.fetchone()
+                if existing:
+                    return render_template('signup.html', error='Username or email already exists.')
+
+                cursor.execute(
+                    "INSERT INTO users (username, email, phone, password, role) VALUES (%s, %s, %s, %s, %s)",
+                    (username, email, normalized_phone, password, 'User'),
+                )
+                connection.commit()
+        finally:
+            connection.close()
+
+        return redirect(url_for('login', registered='1'))
+
+    return render_template('signup.html')
+
 
 @app.route('/logout')
 def logout():
     session.clear()
     return redirect(url_for('login'))
+
+
+@app.route('/api/forgot-password/send', methods=['POST'])
+def forgot_password_send():
+    data = request.get_json(silent=True) or {}
+    contact = (data.get('contact') or '').strip()
+    if not contact:
+        return jsonify({'success': False, 'error': 'Enter your registered email or phone number.'}), 400
+
+    user = _find_user_by_contact(contact)
+    if not user:
+        return jsonify({'success': False, 'error': 'No account found for that email or phone number.'}), 404
+
+    contact_key = contact.lower() if '@' in contact else _normalize_phone(contact)
+    code = _store_reset_code(contact_key, user)
+
+    channel = 'email' if '@' in contact else 'phone'
+    print(f'[CipherSync] Password reset code for {contact}: {code}')
+
+    payload = {
+        'success': True,
+        'message': f'Verification code sent to your {channel}.',
+        'channel': channel,
+    }
+    if app.debug:
+        payload['dev_code'] = code
+    return jsonify(payload)
+
+
+@app.route('/api/forgot-password/verify', methods=['POST'])
+def forgot_password_verify():
+    data = request.get_json(silent=True) or {}
+    contact = (data.get('contact') or '').strip()
+    code = (data.get('code') or '').strip()
+    if not contact or not code:
+        return jsonify({'success': False, 'error': 'Email/phone and verification code are required.'}), 400
+
+    contact_key = contact.lower() if '@' in contact else _normalize_phone(contact)
+    entry = _get_reset_entry(contact_key)
+    if not entry or entry['code'] != code:
+        return jsonify({'success': False, 'error': 'Invalid or expired verification code.'}), 400
+
+    _password_reset_store.pop(contact_key, None)
+    session['user_id'] = entry['user_id']
+    session['username'] = entry['username']
+    session['role'] = entry['role']
+    session['password_reset'] = True
+
+    return jsonify({
+        'success': True,
+        'redirect': url_for('serve_settings_account') + '#change-password',
+    })
+
+
+@app.route('/api/change-password', methods=['POST'])
+@login_required
+def change_password():
+    data = request.get_json(silent=True) or {}
+    new_password = (data.get('new_password') or '').strip()
+    confirm_password = (data.get('confirm_password') or '').strip()
+    current_password = (data.get('current_password') or '').strip()
+    is_reset_flow = session.get('password_reset')
+
+    if not new_password or not confirm_password:
+        return jsonify({'success': False, 'error': 'New password and confirmation are required.'}), 400
+    if new_password != confirm_password:
+        return jsonify({'success': False, 'error': 'New password and confirmation do not match.'}), 400
+    if len(new_password) < 6:
+        return jsonify({'success': False, 'error': 'Password must be at least 6 characters.'}), 400
+
+    user_id = session.get('user_id')
+    connection = get_db_connection()
+    try:
+        with connection_cursor(connection) as cursor:
+            cursor.execute('SELECT password FROM users WHERE id = %s', (user_id,))
+            row = cursor.fetchone()
+            if not row:
+                return jsonify({'success': False, 'error': 'User account not found.'}), 404
+
+            if not is_reset_flow:
+                if not current_password:
+                    return jsonify({'success': False, 'error': 'Current password is required.'}), 400
+                if row['password'] != current_password:
+                    return jsonify({'success': False, 'error': 'Current password is incorrect.'}), 403
+
+            cursor.execute('UPDATE users SET password = %s WHERE id = %s', (new_password, user_id))
+            connection.commit()
+    finally:
+        connection.close()
+
+    session.pop('password_reset', None)
+    return jsonify({'success': True, 'message': 'Password updated successfully.'})
+
 
 # --- HTML ROUTES ---
 @app.route('/')
@@ -87,7 +304,12 @@ def serve_settings(): return render_template('settings.html')
 
 @app.route('/settings/account')
 @login_required
-def serve_settings_account(): return render_template('settings.html', section='account')
+def serve_settings_account():
+    return render_template(
+        'settings.html',
+        section='account',
+        password_reset=session.get('password_reset', False),
+    )
 
 @app.route('/settings/security')
 @login_required
@@ -248,6 +470,49 @@ def handle_policies():
                 return jsonify({"message": "Policy deployed successfully!"}), 201
     except Exception as e: return jsonify({"error": str(e)}), 500
     finally: connection.close()
+
+
+@app.route('/api/policies/<int:policy_id>', methods=['PUT', 'DELETE'])
+def handle_policy_by_id(policy_id):
+    connection = get_db_connection()
+    try:
+        with connection_cursor(connection) as cursor:
+            columns = policy_column_names(cursor)
+            name_col = 'name' if 'name' in columns else ('policy_name' if 'policy_name' in columns else columns[1])
+            date_col = 'date' if 'date' in columns else ('last_modified' if 'last_modified' in columns else None)
+
+            if request.method == 'PUT':
+                data = request.get_json(silent=True) or {}
+                policy_name = (data.get('policy_name') or '').strip()
+                category = (data.get('category') or '').strip()
+                status = (data.get('status') or '').strip()
+
+                if not policy_name or not category or not status:
+                    return jsonify({"error": "Missing required fields."}), 400
+
+                if date_col:
+                    now_expr = "datetime('now')" if use_sqlite() else 'NOW()'
+                    sql = f"UPDATE policies SET {name_col} = %s, category = %s, status = %s, {date_col} = {now_expr} WHERE id = %s"
+                    cursor.execute(sql, (policy_name, category, status, policy_id))
+                else:
+                    sql = f"UPDATE policies SET {name_col} = %s, category = %s, status = %s WHERE id = %s"
+                    cursor.execute(sql, (policy_name, category, status, policy_id))
+
+                if cursor.rowcount == 0:
+                    return jsonify({"error": "Policy not found."}), 404
+
+                connection.commit()
+                return jsonify({"message": "Policy updated successfully."})
+
+            cursor.execute("DELETE FROM policies WHERE id = %s", (policy_id,))
+            if cursor.rowcount == 0:
+                return jsonify({"error": "Policy not found."}), 404
+            connection.commit()
+            return jsonify({"message": "Policy deleted successfully."})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        connection.close()
 
 @app.route('/api/logs', methods=['GET'])
 def get_activity_logs():

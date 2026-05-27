@@ -292,41 +292,28 @@
         </aside>
 
         <div class="main-wrapper">
-            <header class="top-nav">
-                <div class="top-nav-left">
-                    <button id="sidebarToggle" class="sidebar-toggle">
-                        <i class="fas fa-bars"></i>
-                    </button>
-                    <div class="top-nav-brand">
-                        <img src="{{ url_for('static', filename='logo.png') }}" alt="CipherSync" class="top-nav-logo">
-                    </div>
-                </div>
-                <div class="notif-icon">
-                    <i class="fas fa-bell"></i>
-                    <span class="notif-badge">1</span>
+            <header class="top-nav top-nav-title-only">
+                <div class="page-title-section">
+                    <h1>Encryption Control</h1>
                 </div>
             </header>
 
             <main class="content-area">
-                <div class="page-title-section">
-                    <h1>Encryption Control</h1>
-                </div>
-
                 <div class="encryption-settings-grid">
                     <div class="card">
                         <div class="card-header"><h3>Folder Encryption</h3></div>
                         <div class="card-body">
-                            <p class="meta">Automatically encrypt all documents in the following sensitive system directories.</p>
+                            <p class="meta">Automatically encrypt sensitive business data folders to enforce at-rest protection.</p>
                             <ul class="violations-list" id="folderList">
                                 <li>
                                     <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                                        <span><i class="fas fa-folder"></i> C:\Users\Finance\Reports</span>
+                                        <span><i class="fas fa-folder"></i> C:\Departments\Finance\Payroll-Exports</span>
                                         <i class="fas fa-trash-alt delete-folder-btn" style="cursor: pointer; color: #ef4444;" onclick="removeFolderElement(this)"></i>
                                     </div>
                                 </li>
                                 <li>
                                     <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                                        <span><i class="fas fa-folder"></i> C:\Users\HR\Sensitive</span>
+                                        <span><i class="fas fa-folder"></i> C:\Departments\HR\Employee-Records</span>
                                         <i class="fas fa-trash-alt delete-folder-btn" style="cursor: pointer; color: #ef4444;" onclick="removeFolderElement(this)"></i>
                                     </div>
                                 </li>

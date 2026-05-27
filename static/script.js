@@ -248,11 +248,12 @@ document.addEventListener('DOMContentLoaded', () => {
             actors.forEach((actor, index) => {
                 const li = document.createElement('li');
                 const badgeColor = actor.max_risk === 'High Risk' ? 'var(--accent-red)' : 'var(--accent-orange)';
+                const actorName = actor.actor || actor.threat_actor || 'Unknown Actor';
                 
                 li.innerHTML = `
                     <div class="alert-icon" style="background-color: ${badgeColor}">${index + 1}</div>
                     <div class="alert-info">
-                        <h4>Target/Actor: ${actor.threat_actor}</h4>
+                        <h4>Target/Actor: ${actorName}</h4>
                         <span class="meta">${actor.incidents} detected system breaches (${actor.max_risk})</span>
                     </div>
                 `;
@@ -263,10 +264,83 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    async function initThreatInsights() {
+        const totalAlertsEl = document.getElementById('threatTotalAlerts');
+        if (!totalAlertsEl) return;
+
+        const highRiskEl = document.getElementById('threatHighRisk');
+        const topTypeEl = document.getElementById('threatTopType');
+        const topActorEl = document.getElementById('threatTopActor');
+        const summaryEl = document.getElementById('threatSummaryText');
+        const riskListEl = document.getElementById('riskInterpretationList');
+        const actionsListEl = document.getElementById('recommendedActionsList');
+
+        try {
+            const [alertsRes, distRes, actorsRes] = await Promise.all([
+                fetch(`${API_BASE}/alerts`),
+                fetch(`${API_BASE}/threat-distribution`),
+                fetch(`${API_BASE}/top-actors`),
+            ]);
+
+            if (!alertsRes.ok || !distRes.ok || !actorsRes.ok) {
+                throw new Error('Failed to load threat intelligence data.');
+            }
+
+            const alerts = await alertsRes.json();
+            const distribution = await distRes.json();
+            const actors = await actorsRes.json();
+
+            const totalAlerts = alerts.length;
+            const highRisk = alerts.filter((a) => (a.risk || '').toLowerCase().includes('high')).length;
+            const blocked = alerts.filter((a) => (a.status || '').toLowerCase() === 'blocked').length;
+            const blockedRate = totalAlerts > 0 ? Math.round((blocked / totalAlerts) * 100) : 0;
+
+            const topTypeItem = distribution.reduce((max, item) => {
+                if (!max || item.total > max.total) return item;
+                return max;
+            }, null);
+
+            const topActor = actors[0]?.actor || actors[0]?.threat_actor || 'No actor data';
+            const topActorIncidents = actors[0]?.incidents || 0;
+            const topType = topTypeItem?.threat_type || 'No type data';
+            const topTypeCount = topTypeItem?.total || 0;
+
+            totalAlertsEl.textContent = String(totalAlerts);
+            highRiskEl.textContent = String(highRisk);
+            topTypeEl.textContent = topType;
+            topActorEl.textContent = topActor;
+
+            summaryEl.textContent = `Current telemetry shows ${totalAlerts} total alerts, with ${highRisk} high-risk incidents and a ${blockedRate}% automatic block rate. The dominant pattern is ${topType} (${topTypeCount} events), while ${topActor} is currently the most active threat actor.`;
+
+            riskListEl.innerHTML = `
+                <li>${highRisk > 0 ? `${highRisk} high-risk incidents require immediate triage and containment.` : 'No high-risk incidents recorded in this cycle.'}</li>
+                <li>${topType !== 'No type data' ? `${topType} is the leading threat class, indicating concentrated pressure on a single attack path.` : 'Threat type signals are still building; continue collecting telemetry.'}</li>
+                <li>${topActorIncidents > 0 ? `${topActor} has ${topActorIncidents} linked events and should be added to watchlist monitoring.` : 'No persistent actor identified yet.'}</li>
+            `;
+
+            actionsListEl.innerHTML = `
+                <li>Prioritize detections and containment rules for ${topType !== 'No type data' ? topType : 'high-frequency threat categories'}.</li>
+                <li>Run targeted investigation and access review for ${topActor !== 'No actor data' ? topActor : 'newly emerging actors'}.</li>
+                <li>Harden controls for repeated high-risk paths and validate response playbooks with the incident team.</li>
+            `;
+        } catch (error) {
+            console.error('Error loading threat insights:', error);
+            if (summaryEl) {
+                summaryEl.textContent = 'Threat intelligence summary is temporarily unavailable. Please retry after data refresh.';
+            }
+            if (riskListEl) {
+                riskListEl.innerHTML = '<li>Risk interpretation is unavailable while telemetry is loading.</li>';
+            }
+            if (actionsListEl) {
+                actionsListEl.innerHTML = '<li>Recommended actions will appear once telemetry is available.</li>';
+            }
+        }
+    }
+
     // ==========================================
     // 5. LIVE POLICY MANAGEMENT FUNCTIONS
     // ==========================================
-    async function loadActivePolicies() {
+    async function loadActivePolicies(onEdit) {
         const tbody = document.getElementById('dynamicPolicyTableBody');
         if (!tbody) return;
 
@@ -305,10 +379,13 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             // Re-bind listeners para sa mga dynamic buttons
-            document.querySelectorAll('.edit-policy-btn').forEach(btn => {
+            document.querySelectorAll('.edit-policy-btn').forEach((btn) => {
                 btn.addEventListener('click', (e) => {
-                    const policyId = e.target.getAttribute('data-id');
-                    alert(`Loading active structural attributes for Policy ID: ${policyId}`);
+                    const policyId = Number(e.currentTarget.getAttribute('data-id'));
+                    const policy = policies.find((item) => Number(item.id) === policyId);
+                    if (policy && typeof onEdit === 'function') {
+                        onEdit(policy);
+                    }
                 });
             });
 
@@ -321,16 +398,42 @@ document.addEventListener('DOMContentLoaded', () => {
         const createBtn = document.getElementById('createNewPolicyBtn');
         const overlayModal = document.getElementById('policyModalOverlay');
         const dismissBtn = document.getElementById('dismissModalBtn');
+        const cancelBtn = document.getElementById('cancelModalBtn');
+        const deleteBtn = document.getElementById('deleteModalBtn');
         const entryForm = document.getElementById('policyDeploymentForm');
+        const modalTitle = overlayModal?.querySelector('.card-header h3');
+        const submitBtn = entryForm?.querySelector('button[type="submit"]');
+        let editingPolicyId = null;
+
+        function setCreateMode() {
+            editingPolicyId = null;
+            if (modalTitle) modalTitle.textContent = 'Deploy New Policy';
+            if (submitBtn) submitBtn.textContent = 'Deploy Rule';
+            if (deleteBtn) deleteBtn.style.display = 'none';
+        }
+
+        function startEditMode(policy) {
+            if (!entryForm || !overlayModal) return;
+            editingPolicyId = policy.id;
+            document.getElementById('policyFormName').value = policy.policy_name || '';
+            document.getElementById('policyFormCategory').value = policy.category || 'DLP';
+            document.getElementById('policyFormStatus').value = policy.status || 'Active';
+            if (modalTitle) modalTitle.textContent = `Edit Policy #${policy.id}`;
+            if (submitBtn) submitBtn.textContent = 'Save Changes';
+            if (deleteBtn) deleteBtn.style.display = 'inline-block';
+            overlayModal.style.display = 'flex';
+        }
 
         // I-load ang listahan ng records kung nasa tamang page view window
         if (document.getElementById('dynamicPolicyTableBody')) {
-            loadActivePolicies();
+            loadActivePolicies(startEditMode);
         }
 
         if (!createBtn || !overlayModal) return;
 
         createBtn.addEventListener('click', () => {
+            setCreateMode();
+            if (entryForm) entryForm.reset();
             overlayModal.style.display = 'flex';
         });
 
@@ -338,12 +441,51 @@ document.addEventListener('DOMContentLoaded', () => {
             dismissBtn.addEventListener('click', () => {
                 overlayModal.style.display = 'none';
                 if (entryForm) entryForm.reset();
+                setCreateMode();
+            });
+        }
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', () => {
+                overlayModal.style.display = 'none';
+                if (entryForm) entryForm.reset();
+                setCreateMode();
+            });
+        }
+        if (deleteBtn) {
+            deleteBtn.addEventListener('click', async () => {
+                if (editingPolicyId === null) return;
+                const shouldDelete = confirm('Delete this policy permanently?');
+                if (!shouldDelete) return;
+                if (entryForm && entryForm.dataset.submitting === 'true') return;
+                if (entryForm) entryForm.dataset.submitting = 'true';
+
+                try {
+                    const res = await fetch(`${API_BASE}/policies/${editingPolicyId}`, {
+                        method: 'DELETE',
+                    });
+                    const data = await res.json();
+                    if (!res.ok) {
+                        alert(data.error || 'Failed to delete policy.');
+                        return;
+                    }
+                    overlayModal.style.display = 'none';
+                    if (entryForm) entryForm.reset();
+                    setCreateMode();
+                    loadActivePolicies(startEditMode);
+                } catch (err) {
+                    console.error('Policy deletion failed:', err);
+                    alert('Network error while deleting policy.');
+                } finally {
+                    if (entryForm) entryForm.dataset.submitting = 'false';
+                }
             });
         }
 
         if (entryForm) {
             entryForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
+                if (entryForm.dataset.submitting === 'true') return;
+                entryForm.dataset.submitting = 'true';
 
                 const payload = {
                     policy_name: document.getElementById('policyFormName').value,
@@ -352,8 +494,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 };
 
                 try {
-                    const res = await fetch(`${API_BASE}/policies`, {
-                        method: 'POST',
+                    const isEdit = editingPolicyId !== null;
+                    const endpoint = isEdit ? `${API_BASE}/policies/${editingPolicyId}` : `${API_BASE}/policies`;
+                    const method = isEdit ? 'PUT' : 'POST';
+                    const res = await fetch(endpoint, {
+                        method,
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(payload)
                     });
@@ -361,13 +506,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (res.ok) {
                         overlayModal.style.display = 'none';
                         entryForm.reset();
-                        loadActivePolicies(); 
+                        setCreateMode();
+                        loadActivePolicies(startEditMode);
                     } else {
                         const errData = await res.json();
                         alert(`Deployment Error: ${errData.error || 'Server rejected request layer execution.'}`);
                     }
                 } catch (err) {
                     console.error('API endpoint transmission failure:', err);
+                } finally {
+                    entryForm.dataset.submitting = 'false';
                 }
             });
         }
@@ -533,20 +681,56 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('changePasswordPanel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
-        form.addEventListener('submit', (e) => {
+        const isResetFlow = form.dataset.passwordReset === 'true';
+
+        form.addEventListener('submit', async (e) => {
             e.preventDefault();
             const newPass = document.getElementById('newPassword')?.value || '';
             const confirmPass = document.getElementById('confirmPassword')?.value || '';
+            const currentPass = document.getElementById('currentPassword')?.value || '';
+
             if (newPass !== confirmPass) {
                 alert('New password and confirmation do not match.');
                 return;
             }
-            alert('Password updated successfully.');
-            form.reset();
-            document.querySelectorAll('.password-toggle i').forEach((icon) => {
-                icon.classList.add('fa-eye');
-                icon.classList.remove('fa-eye-slash');
-            });
+
+            const payload = {
+                new_password: newPass,
+                confirm_password: confirmPass,
+            };
+            if (!isResetFlow) {
+                payload.current_password = currentPass;
+            }
+
+            const submitBtn = form.querySelector('.change-password-submit');
+            if (submitBtn) submitBtn.disabled = true;
+
+            try {
+                const res = await fetch('/api/change-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+                const data = await res.json();
+                if (!res.ok || !data.success) {
+                    alert(data.error || 'Could not update password.');
+                    return;
+                }
+                alert(data.message || 'Password updated successfully.');
+                if (isResetFlow) {
+                    window.location.href = '/';
+                    return;
+                }
+                form.reset();
+                document.querySelectorAll('.password-toggle i').forEach((icon) => {
+                    icon.classList.add('fa-eye');
+                    icon.classList.remove('fa-eye-slash');
+                });
+            } catch {
+                alert('Network error. Please try again.');
+            } finally {
+                if (submitBtn) submitBtn.disabled = false;
+            }
         });
     }
 
@@ -728,6 +912,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (document.getElementById('threatDistributionChart')) {
         initDistributionChart();
         fetchTopActors();
+        initThreatInsights();
     }
 
     // AUTO-REFRESH: Tuwing 10 segundo para magmukhang live ang data
