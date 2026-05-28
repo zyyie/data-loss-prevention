@@ -418,13 +418,13 @@
         <div class="forgot-modal" role="dialog" aria-labelledby="forgotModalTitle">
             <button type="button" class="forgot-close" id="forgotCloseBtn" aria-label="Close">&times;</button>
             <h2 id="forgotModalTitle">Reset password</h2>
-            <p id="forgotModalDesc">Enter your registered email or phone number to receive a verification code.</p>
+            <p id="forgotModalDesc">Enter your registered email to receive a 6-digit OTP in Gmail.</p>
             <div class="forgot-feedback" id="forgotFeedback"></div>
 
             <div class="forgot-step active" id="forgotStepContact">
                 <div class="form-group">
-                    <label for="forgotContact">Email or phone number</label>
-                    <input type="text" id="forgotContact" placeholder="e.g. admin@ciphersync.com or 09171234567" autocomplete="email">
+                    <label for="forgotContact">Registered email</label>
+                    <input type="email" id="forgotContact" placeholder="e.g. admin@ciphersync.com" autocomplete="email">
                 </div>
                 <button type="button" class="btn-forgot" id="forgotSendBtn">Send verification code</button>
                 <button type="button" class="btn-forgot-secondary" id="forgotCancelBtn">Cancel</button>
@@ -508,7 +508,7 @@
                 devCodeHint.style.display = 'none';
                 stepContact.classList.add('active');
                 stepVerify.classList.remove('active');
-                modalDesc.textContent = 'Enter your registered email or phone number to receive a verification code.';
+                modalDesc.textContent = 'Enter your registered email to receive a 6-digit OTP in Gmail.';
                 overlay.classList.add('open');
                 overlay.setAttribute('aria-hidden', 'false');
                 contactInput.focus();
@@ -522,7 +522,7 @@
             function goToVerifyStep() {
                 stepContact.classList.remove('active');
                 stepVerify.classList.add('active');
-                modalDesc.textContent = 'Enter the verification code sent to your email or phone.';
+                modalDesc.textContent = 'Enter the 6-digit OTP from your Gmail inbox (check spam if needed).';
                 codeInput.focus();
             }
 
@@ -548,8 +548,12 @@
                     }
                     savedContact = contact;
                     showFeedback(data.message, 'success');
+                    if (data.sent_to) {
+                        devCodeHint.textContent = 'Sent to: ' + data.sent_to;
+                        devCodeHint.style.display = 'block';
+                    }
                     if (data.dev_code) {
-                        devCodeHint.textContent = 'Demo code: ' + data.dev_code;
+                        devCodeHint.textContent += (devCodeHint.textContent ? ' | ' : '') + 'Dev code: ' + data.dev_code;
                         devCodeHint.style.display = 'block';
                     }
                     goToVerifyStep();

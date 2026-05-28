@@ -29,6 +29,19 @@
             margin-left: auto;
             margin-right: auto;
         }
+
+        .stat-cards-grid .stat-card-link {
+            position: relative;
+            z-index: 2;
+            pointer-events: auto;
+            cursor: pointer;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .stat-cards-grid .stat-card-link:active {
+            transform: translateY(0);
+        }
     </style>
 </head>
 
@@ -82,23 +95,86 @@
                     </div>
                 </div>
                 <div class="top-nav-actions">
+                    <a
+                        href="https://mail.google.com/mail/?view=cm&fs=1&to=ciphersync.security@gmail.com&su=CipherSync%20Support%20Request"
+                        class="top-nav-email-icon"
+                        title="Email SOC Support"
+                        aria-label="Email SOC Support"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                    >
+                        <i class="fas fa-envelope"></i>
+                    </a>
                     <div class="notification-icon" id="dashboardNotificationIcon">
                         <i class="fas fa-bell"></i>
-                        <span class="badge" id="notificationBadge">0</span>
+                        <span class="badge is-hidden" id="notificationBadge">0</span>
                         <div class="notification-menu" id="dashboardNotificationMenu">
-                            <div class="notification-menu-title">Notifications</div>
+                            <div class="notification-menu-title">Recent Activity</div>
                             <ul id="notificationList">
-                                <li class="notification-empty">Loading notifications...</li>
+                                <li class="notification-empty">Loading activity...</li>
                             </ul>
+                            <a href="/logs" class="notification-menu-footer">View all in Activity Logs <i class="fas fa-arrow-right"></i></a>
                         </div>
                     </div>
-                    <div class="top-nav-user-pill">
-                        <div class="top-nav-user-icon">
-                            <i class="fas fa-user"></i>
+                    <div
+                        class="top-nav-user-pill"
+                        id="dashboardUserPill"
+                        role="button"
+                        tabindex="0"
+                        aria-label="Account menu"
+                        aria-haspopup="true"
+                        aria-expanded="false"
+                    >
+                        <div class="top-nav-user-trigger">
+                            <div class="top-nav-user-icon">
+                                <i class="fas fa-user"></i>
+                            </div>
+                            <div class="top-nav-user-meta">
+                                <span class="name">{{ current_username }}</span>
+                                <span class="status">Active</span>
+                            </div>
+                            <i class="fas fa-chevron-down top-nav-user-chevron" aria-hidden="true"></i>
                         </div>
-                        <div class="top-nav-user-meta">
-                            <span class="name">{{ session.get('username', 'User') }}</span>
-                            <span class="status">Active</span>
+                        <div class="user-menu" id="dashboardUserMenu">
+                            <div class="user-menu-header">
+                                <div class="user-menu-avatar">
+                                    <i class="fas fa-user"></i>
+                                </div>
+                                <div class="user-menu-details">
+                                    <div class="user-menu-name">{{ current_username }}</div>
+                                    {% if current_user_email %}
+                                    <div class="user-menu-email">{{ current_user_email }}</div>
+                                    {% endif %}
+                                    <span class="user-menu-role">{{ current_user_role }}</span>
+                                </div>
+                            </div>
+                            <ul class="user-menu-actions">
+                                <li>
+                                    <a href="/settings/account">
+                                        <i class="fas fa-user-circle"></i>
+                                        <span>Account Settings</span>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="/settings/account#change-password">
+                                        <i class="fas fa-key"></i>
+                                        <span>Change Password</span>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="/support">
+                                        <i class="fas fa-headset"></i>
+                                        <span>Support</span>
+                                    </a>
+                                </li>
+                                <li class="user-menu-divider" aria-hidden="true"></li>
+                                <li>
+                                    <a href="/logout" class="user-menu-logout">
+                                        <i class="fas fa-sign-out-alt"></i>
+                                        <span>Logout</span>
+                                    </a>
+                                </li>
+                            </ul>
                         </div>
                     </div>
                 </div>
@@ -110,34 +186,34 @@
                 </div>
 
                 <div class="stat-cards-grid">
-                    <div class="stat-card-mini">
+                    <a href="/encryption" data-href="/encryption" class="stat-card-mini stat-card-link" title="Open Encryption Control" role="link">
                         <div class="card-icon blue"><i class="fas fa-file-invoice"></i></div>
                         <div class="card-info">
                             <span class="label">Files Secured</span>
                             <span class="value" id="filesSecured">--</span>
                         </div>
-                    </div>
-                    <div class="stat-card-mini">
+                    </a>
+                    <a href="/threat" data-href="/threat" class="stat-card-mini stat-card-link" title="Open Threat Analytics" role="link">
                         <div class="card-icon red"><i class="fas fa-shield-virus"></i></div>
                         <div class="card-info">
                             <span class="label">Threats Blocked</span>
                             <span class="value" id="threatsBlocked">--</span>
                         </div>
-                    </div>
-                    <div class="stat-card-mini">
+                    </a>
+                    <a href="/incident" data-href="/incident" class="stat-card-mini stat-card-link" title="Open Incident Response" role="link">
                         <div class="card-icon dark-blue"><i class="fas fa-bell"></i></div>
                         <div class="card-info">
                             <span class="label">Incidents Detected</span>
                             <span class="value" id="incidentsDetected">--</span>
                         </div>
-                    </div>
-                    <div class="stat-card-mini">
+                    </a>
+                    <a href="/reports" data-href="/reports" class="stat-card-mini stat-card-link" title="Open Reports &amp; Performance" role="link">
                         <div class="card-icon green"><i class="fas fa-check-circle"></i></div>
                         <div class="card-info">
                             <span class="label">Compliance Status</span>
                             <span class="value green" id="complianceStatus">--</span>
                         </div>
-                    </div>
+                    </a>
                 </div>
 
                 <div class="middle-grid">
@@ -153,15 +229,15 @@
                             </div>
                             <div class="threat-stats-row">
                                 <div class="threat-stat red">
-                                    <span class="count">7</span>
+                                    <span class="count" id="threatCredentialCount">0</span>
                                     <span class="label">Credential misuse</span>
                                 </div>
                                 <div class="threat-stat orange">
-                                    <span class="count">5</span>
+                                    <span class="count" id="threatPolicyCount">0</span>
                                     <span class="label">Policy bypass</span>
                                 </div>
                                 <div class="threat-stat yellow">
-                                    <span class="count">4</span>
+                                    <span class="count" id="threatExposureCount">0</span>
                                     <span class="label">Data exposure</span>
                                 </div>
                             </div>
@@ -178,9 +254,9 @@
                                 <i class="fas fa-lock lock-overlay"></i>
                             </div>
                             <ul class="encryption-list">
-                                <li><span class="dot"></span> Files Encrypted: <strong>9,200</strong></li>
+                                <li><span class="dot"></span> Files Encrypted: <strong id="filesEncryptedCount">0</strong></li>
                                 <li><span class="dot"></span> Encryption Compliance: <strong
-                                        class="text-green">Active</strong></li>
+                                        id="encryptionComplianceStatus" class="text-green">Active</strong></li>
                             </ul>
                         </div>
                     </div>
@@ -197,8 +273,6 @@
                             <div class="action-buttons">
                                 <button class="btn btn-red" onclick="window.location.href='/incident'">View
                                     Incidents</button>
-                                <button class="btn btn-blue" onclick="window.location.href='/threat'">Response
-                                    Actions</button>
                             </div>
                         </div>
                     </div>
@@ -219,10 +293,8 @@
                             <h3>Policy Violations</h3>
                         </div>
                         <div class="card-body">
-                            <ul class="violations-list">
-                                <li><input type="checkbox" checked disabled> Outbound PII sent to personal email</li>
-                                <li><input type="checkbox" checked disabled> Unapproved USB write attempt</li>
-                                <li><input type="checkbox" checked disabled> Sensitive payroll export outside approved share</li>
+                            <ul class="violations-list" id="policyViolationsList">
+                                <li class="meta">Loading policy violations...</li>
                             </ul>
                             <button class="btn-text-blue" onclick="window.location.href='/policy'">Manage
                                 Policies</button>
@@ -235,7 +307,7 @@
                         <div class="card-body">
                             <ul class="logs-list" id="activityLogsList">
                             </ul>
-                            <button class="btn-blue-outline" onclick="window.location.href='/logs'">View Logs <i
+                            <button class="btn-blue-outline" onclick="window.location.href='/logs'">View Activity Logs <i
                                     class="fas fa-chevron-right"></i></button>
                         </div>
                     </div>
@@ -243,48 +315,43 @@
             </main>
         </div>
     </div>
+
+    <button type="button" class="dashboard-chat-fab" id="dashboardChatFab" aria-label="Open CipherSync AI assistant">
+        <i class="fas fa-robot"></i>
+    </button>
+
+    <div class="support-chat-overlay" id="supportChatOverlay" aria-hidden="true">
+        <div class="support-chat-modal" role="dialog" aria-modal="true" aria-labelledby="supportChatTitle">
+            <div class="support-chat-header">
+                <div>
+                    <div class="support-chat-title" id="supportChatTitle">CipherSync AI Assistant (Ollama)</div>
+                    <div class="support-chat-subtitle">Ask about alerts, incidents, policies, and DLP troubleshooting.</div>
+                </div>
+                <button type="button" class="support-chat-close" id="closeLiveChatBtn" aria-label="Close chat">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="support-chat-body" id="supportChatBody">
+                <div class="support-chat-bubble agent">
+                    Hello! I am your CipherSync assistant. Ask about incidents, blocked threats, or security policies.
+                </div>
+            </div>
+            <form class="support-chat-input" id="supportChatForm">
+                <input
+                    type="text"
+                    id="supportChatMessage"
+                    placeholder="Type your message…"
+                    autocomplete="off"
+                    maxlength="500"
+                    required
+                >
+                <button type="submit" class="btn btn-blue support-chat-send">
+                    <i class="fas fa-paper-plane"></i> Send
+                </button>
+            </form>
+        </div>
+    </div>
+
     <script src="{{ url_for('static', filename='script.js') }}"></script>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            // I-fetch ang live calculations para sa Dashboard Trend Line Chart
-            fetch('/api/threat-trend')
-                .then(response => response.json())
-                .then(trendData => {
-                    const ctx = document.getElementById('threatAnalyticsChart').getContext('2d'); // Siguraduhing tama ang ID ng canvas mo
-
-                    new Chart(ctx, {
-                        type: 'line',
-                        data: {
-                            labels: trendData.labels, // Halimbawa: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'] sa database
-                            datasets: [{
-                                label: 'Threats Detected',
-                                data: trendData.data, // Live counts mula sa alerts table
-                                borderColor: '#3b82f6',
-                                backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                                fill: true,
-                                tension: 0.4,
-                                borderWidth: 3,
-                                pointBackgroundColor: '#3b82f6'
-                            }]
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            plugins: {
-                                legend: { display: false }
-                            },
-                            scales: {
-                                y: {
-                                    beginAtZero: true,
-                                    ticks: { precision: 0 }
-                                }
-                            }
-                        }
-                    });
-                })
-                .catch(err => console.error('Error loading dashboard line chart:', err));
-        });
-    </script>
 </body>
 </html>

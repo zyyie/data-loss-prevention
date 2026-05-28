@@ -348,6 +348,7 @@
                         style="height: 90px; resize: none; font-family: inherit;"></textarea>
                 </div>
                 <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 25px;">
+                    <button type="button" id="editIncidentBtn" class="btn btn-outline" style="display:none;">Edit</button>
                     <button type="button" id="cancelIncidentModal" class="btn btn-outline">Cancel</button>
                     <button type="submit" class="btn btn-blue">Apply Mitigation</button>
                 </div>
@@ -363,17 +364,43 @@
             const modal = document.getElementById('incidentModalOverlay');
             const closeX = document.getElementById('closeIncidentModal');
             const cancelBtn = document.getElementById('cancelIncidentModal');
+            const editIncidentBtn = document.getElementById('editIncidentBtn');
             const form = document.getElementById('incidentResponseForm');
             const toastContainer = document.getElementById('toastContainer');
+            const mitigationSelect = document.getElementById('mitigationActionSelect');
+            const incidentNotesInput = document.getElementById('incidentNotes');
+            const applyBtn = form.querySelector('button[type="submit"]');
 
             let currentActiveIncidentId = "";
+            let currentIncidentDescription = "";
+            let currentIncidentSeverity = "";
+
+            function isReviewOnlyStatus(status) {
+                return status === 'Resolved' || status === 'Mitigated' || status === 'False Positive';
+            }
+
+            function setModalEditMode(isEditable) {
+                mitigationSelect.disabled = !isEditable;
+                incidentNotesInput.readOnly = !isEditable;
+                applyBtn.disabled = !isEditable;
+                applyBtn.style.opacity = isEditable ? '1' : '0.65';
+                applyBtn.style.cursor = isEditable ? 'pointer' : 'not-allowed';
+                editIncidentBtn.style.display = isEditable ? 'none' : 'inline-flex';
+            }
 
             window.openIncidentModal = function (id, description, severity, status) {
                 currentActiveIncidentId = id;
+                currentIncidentDescription = description;
+                currentIncidentSeverity = severity;
                 document.getElementById('modalIncidentId').innerText = `Manage ${id} [${severity}]`;
                 document.getElementById('modalIncidentDetails').innerText = description;
                 document.getElementById('mitigationActionSelect').value = status;
                 document.getElementById('incidentNotes').value = "";
+                if (isReviewOnlyStatus(status)) {
+                    setModalEditMode(false);
+                } else {
+                    setModalEditMode(true);
+                }
                 modal.style.display = 'flex';
             };
 
@@ -384,54 +411,118 @@
 
             closeX.addEventListener('click', closeModal);
             cancelBtn.addEventListener('click', closeModal);
+            editIncidentBtn.addEventListener('click', () => {
+                setModalEditMode(true);
+                incidentNotesInput.focus();
+            });
             modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
 
             // AJAX Backend Request Submission Handler
-            form.addEventListener('submit', function (e) {
+            function applyStatusToRow(incidentRow, incidentId, updatedStatus) {
+                if (!incidentRow) return;
+
+                const statusClass = (
+                    updatedStatus === 'Resolved' ||
+                    updatedStatus === 'Mitigated' ||
+                    updatedStatus === 'False Positive'
+                ) ? 'status-green' : 'status-orange';
+
+                let statusElement = document.getElementById(`status-${incidentId}`);
+                if (!statusElement) {
+                    const statusCell = incidentRow.cells[3];
+                    statusCell.innerHTML = `<span class="${statusClass}" id="status-${incidentId}">${updatedStatus}</span>`;
+                    statusElement = document.getElementById(`status-${incidentId}`);
+                } else {
+                    statusElement.innerText = updatedStatus;
+                    statusElement.className = statusClass;
+                }
+            }
+
+            form.addEventListener('submit', async function (e) {
                 e.preventDefault();
                 const updatedStatus = document.getElementById('mitigationActionSelect').value;
                 const notesText = document.getElementById('incidentNotes').value;
-                const statusElement = document.getElementById(`status-${currentActiveIncidentId}`);
+                const incidentRow = document.querySelector(`#incidentTableBody tr[data-id="${currentActiveIncidentId}"]`);
+                const actionButton = incidentRow ? incidentRow.querySelector('button.btn') : null;
+                const submitButton = form.querySelector('button[type="submit"]');
 
-                // I-save ang pagbabago sa database gamit ang fetch API
-                fetch('/api/incident/update', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        incident_id: currentActiveIncidentId,
-                        status: updatedStatus,
-                        notes: notesText
-                    })
-                })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            if (statusElement) {
-                                statusElement.innerText = updatedStatus;
-                                if (updatedStatus === 'Resolved' || updatedStatus === 'Mitigated') {
-                                    statusElement.className = 'status-green';
-                                } else {
-                                    statusElement.className = 'status-orange';
-                                }
-                            }
-                            triggerToast(`Incident ${currentActiveIncidentId} status saved successfully!`);
-                            updateNotificationBadge();
-                            closeModal();
-                        } else {
-                            triggerToast('Error updating incident record.');
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        triggerToast('Database connectivity network error.');
+                if (submitButton) {
+                    submitButton.disabled = true;
+                    submitButton.innerText = 'Applying...';
+                }
+
+                try {
+                    const response = await fetch('/api/incident/update', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            incident_id: currentActiveIncidentId,
+                            status: updatedStatus,
+                            notes: notesText
+                        })
                     });
+
+                    const data = await response.json().catch(() => ({}));
+                    if (!response.ok || !data.success) {
+                        triggerToast(data.message || data.error || 'Error updating incident record.', 'error');
+                        return;
+                    }
+
+                    applyStatusToRow(incidentRow, currentActiveIncidentId, updatedStatus);
+
+                    if (actionButton) {
+                        const isClosedFlow = (
+                            updatedStatus === 'Resolved' ||
+                            updatedStatus === 'Mitigated' ||
+                            updatedStatus === 'False Positive'
+                        );
+
+                        if (isClosedFlow) {
+                            actionButton.innerText = 'Reviewed';
+                            actionButton.disabled = false;
+                            actionButton.style.opacity = '1';
+                            actionButton.style.cursor = 'pointer';
+                        } else {
+                            actionButton.innerText = updatedStatus === 'Open' ? 'Review' : 'Take Action';
+                            actionButton.disabled = false;
+                            actionButton.style.opacity = '1';
+                            actionButton.style.cursor = 'pointer';
+                        }
+
+                        actionButton.setAttribute(
+                            'onclick',
+                            `openIncidentModal('${currentActiveIncidentId}', '${currentIncidentDescription.replace(/'/g, "\\'")}', '${currentIncidentSeverity.replace(/'/g, "\\'")}', '${updatedStatus.replace(/'/g, "\\'")}')`
+                        );
+                    }
+
+                    if (incidentRow) {
+                        incidentRow.style.backgroundColor = '#ecfeff';
+                        setTimeout(() => {
+                            incidentRow.style.backgroundColor = '';
+                        }, 1800);
+                    }
+
+                    triggerToast(`Incident ${currentActiveIncidentId} mitigation applied successfully.`, 'success');
+                    updateNotificationBadge();
+                    closeModal();
+                } catch (error) {
+                    console.error('Incident update error:', error);
+                    triggerToast('Database connectivity network error.', 'error');
+                } finally {
+                    if (submitButton) {
+                        submitButton.disabled = false;
+                        submitButton.innerText = 'Apply Mitigation';
+                    }
+                }
             });
 
-            function triggerToast(message) {
+            function triggerToast(message, type = 'success') {
+                const isError = type === 'error';
                 const toast = document.createElement('div');
                 toast.className = 'toast-box';
+                toast.style.borderLeftColor = isError ? '#ef4444' : '#22c55e';
                 toast.innerHTML = `
-                    <i class="fas fa-check-circle" style="color: #22c55e; font-size: 1.2rem;"></i>
+                    <i class="fas ${isError ? 'fa-exclamation-circle' : 'fa-check-circle'}" style="color: ${isError ? '#ef4444' : '#22c55e'}; font-size: 1.2rem;"></i>
                     <div style="flex: 1; font-weight: 500; font-size: 0.9rem; color: #334155;">${message}</div>
                 `;
                 toastContainer.appendChild(toast);
@@ -444,7 +535,7 @@
 
             function updateNotificationBadge() {
                 const activeIncidents = Array.from(document.querySelectorAll('#incidentTableBody tr')).filter(tr => {
-                    const statusText = tr.querySelector('span[id^="status-"]').innerText.trim();
+                    const statusText = tr.querySelector('span[id^="status-"]')?.innerText?.trim() || '';
                     return statusText === 'Open' || statusText === 'Investigating';
                 });
                 const badge = document.getElementById('incidentNotificationBadge');

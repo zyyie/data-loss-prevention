@@ -73,6 +73,74 @@
             align-items: start;
         }
 
+        .upload-card-full {
+            grid-column: 1 / -1;
+        }
+
+        .upload-form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr auto;
+            gap: 12px;
+            align-items: end;
+        }
+
+        .upload-label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 6px;
+            font-size: 0.9rem;
+            color: #334155;
+        }
+
+        .upload-file-wrap {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            padding: 6px 8px;
+            background: #fff;
+            min-height: 38px;
+        }
+
+        .upload-file-wrap.empty {
+            border-color: #f59e0b;
+            background: #fffbeb;
+        }
+
+        .upload-file-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 7px 12px;
+            border-radius: 6px;
+            border: 1px solid #cbd5e1;
+            background: #f8fafc;
+            color: #1e293b;
+            font-size: 0.84rem;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .upload-file-button:hover {
+            background: #e2e8f0;
+        }
+
+        .upload-file-name {
+            font-size: 0.86rem;
+            color: #64748b;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            flex: 1;
+        }
+
+        .upload-file-name.has-file {
+            color: #1e293b;
+            font-weight: 600;
+        }
+
         .card {
             background: #fff;
             border-radius: 8px;
@@ -304,20 +372,7 @@
                         <div class="card-header"><h3>Folder Encryption</h3></div>
                         <div class="card-body">
                             <p class="meta">Automatically encrypt sensitive business data folders to enforce at-rest protection.</p>
-                            <ul class="violations-list" id="folderList">
-                                <li>
-                                    <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                                        <span><i class="fas fa-folder"></i> C:\Departments\Finance\Payroll-Exports</span>
-                                        <i class="fas fa-trash-alt delete-folder-btn" style="cursor: pointer; color: #ef4444;" onclick="removeFolderElement(this)"></i>
-                                    </div>
-                                </li>
-                                <li>
-                                    <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                                        <span><i class="fas fa-folder"></i> C:\Departments\HR\Employee-Records</span>
-                                        <i class="fas fa-trash-alt delete-folder-btn" style="cursor: pointer; color: #ef4444;" onclick="removeFolderElement(this)"></i>
-                                    </div>
-                                </li>
-                            </ul>
+                            <ul class="violations-list" id="folderList"></ul>
                             <button class="btn btn-blue" id="addFolderBtn" style="margin-top: 25px;">+ Add Folder</button>
                         </div>
                     </div>
@@ -335,6 +390,31 @@
                             <button class="btn btn-blue" id="manageKeysBtn" style="margin-top: 10px;">Manage Keys</button>
                         </div>
                     </div>
+
+                    <div class="card upload-card-full">
+                        <div class="card-header"><h3>Upload Secured File</h3></div>
+                        <div class="card-body">
+                            <p class="meta">Upload files directly to a selected secured folder. Uploaded files are counted in Files Secured.</p>
+                            <form id="uploadFileForm" class="upload-form-grid">
+                                <div>
+                                    <label class="upload-label">Target Folder</label>
+                                    <select id="uploadFolderSelect" required style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; box-sizing: border-box; background: #fff;">
+                                        <option value="" disabled selected>Select secured folder...</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="upload-label">File</label>
+                                    <div class="upload-file-wrap" id="uploadFileWrap">
+                                        <input id="uploadFileInput" type="file" required style="display:none;">
+                                        <label for="uploadFileInput" class="upload-file-button">Choose File</label>
+                                        <span id="uploadFileName" class="upload-file-name">No file selected</span>
+                                    </div>
+                                </div>
+                                <button class="btn btn-blue" type="submit" id="uploadFileBtn" style="height: 38px;">Upload File</button>
+                            </form>
+                            <ul class="violations-list" id="uploadedFilesList" style="margin-top: 16px;"></ul>
+                        </div>
+                    </div>
                 </div>
             </main>
         </div>
@@ -349,7 +429,14 @@
             <form id="folderConfigForm">
                 <div style="margin-bottom: 20px;">
                     <label style="display: block; font-weight: 600; margin-bottom: 8px; font-size: 0.9rem; color: #334155;">Directory Path</label>
-                    <input type="text" id="folderPathInput" required placeholder="e.g., C:\Users\Admin\Documents\Secure" style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; box-sizing: border-box;">
+                    <select id="folderPathSelect" required style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; box-sizing: border-box; background: #fff;">
+                        <option value="" disabled selected>Select a protected directory...</option>
+                        <option value="C:\Departments\Finance\Payroll-Exports">C:\Departments\Finance\Payroll-Exports</option>
+                        <option value="C:\Departments\HR\Employee-Records">C:\Departments\HR\Employee-Records</option>
+                        <option value="C:\Departments\Legal\Contracts">C:\Departments\Legal\Contracts</option>
+                        <option value="C:\Departments\IT\Security-Backups">C:\Departments\IT\Security-Backups</option>
+                        <option value="C:\Operations\Audit\Compliance-Reports">C:\Operations\Audit\Compliance-Reports</option>
+                    </select>
                 </div>
                 <div style="display: flex; justify-content: flex-end; gap: 10px;">
                     <button type="button" id="cancelFolderModal" class="btn" style="background:#cbd5e1; color:#334155;">Cancel</button>
@@ -388,6 +475,14 @@
             const cancelFolderModal = document.getElementById('cancelFolderModal');
             const folderConfigForm = document.getElementById('folderConfigForm');
             const folderList = document.getElementById('folderList');
+            const folderPathSelect = document.getElementById('folderPathSelect');
+            const uploadFileForm = document.getElementById('uploadFileForm');
+            const uploadFolderSelect = document.getElementById('uploadFolderSelect');
+            const uploadFileInput = document.getElementById('uploadFileInput');
+            const uploadFileBtn = document.getElementById('uploadFileBtn');
+            const uploadedFilesList = document.getElementById('uploadedFilesList');
+            const uploadFileName = document.getElementById('uploadFileName');
+            const uploadFileWrap = document.getElementById('uploadFileWrap');
 
             const keyConfirmModal = document.getElementById('keyConfirmModalOverlay');
             const manageKeysBtn = document.getElementById('manageKeysBtn');
@@ -408,28 +503,188 @@
                 folderConfigForm.reset();
             }
 
-            closeFolderModal.addEventListener('click', closeFolder);
-            cancelFolderModal.addEventListener('click', closeFolder);
+            function renderFolderList(items) {
+                folderList.innerHTML = '';
+                if (!items || items.length === 0) {
+                    folderList.innerHTML = '<li style="color:#64748b;">No secured folders configured yet.</li>';
+                    return;
+                }
 
-            folderConfigForm.addEventListener('submit', function(e) {
-                e.preventDefault();
-                const pathValue = document.getElementById('folderPathInput').value.trim();
-                if(pathValue) {
+                items.forEach((item) => {
                     const li = document.createElement('li');
                     li.innerHTML = `
                         <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                            <span><i class="fas fa-folder"></i> ${pathValue}</span>
-                            <i class="fas fa-trash-alt delete-folder-btn" style="cursor: pointer; color: #ef4444;" onclick="removeFolderElement(this)"></i>
+                            <span><i class="fas fa-folder"></i> ${item.path}</span>
+                            <i class="fas fa-trash-alt delete-folder-btn" data-id="${item.id}" style="cursor: pointer; color: #ef4444;"></i>
                         </div>
                     `;
                     folderList.appendChild(li);
-                    closeFolder();
+                });
+            }
+
+            function refreshFolderSelectOptions(items) {
+                const hasFolders = (items || []).length > 0;
+                const options = ['<option value="" disabled selected>Select a protected directory...</option>']
+                    .concat((items || []).map((item) => `<option value="${item.path}">${item.path}</option>`));
+                folderPathSelect.innerHTML = options.join('');
+
+                const uploadOptions = ['<option value="" disabled selected>Select secured folder...</option>']
+                    .concat((items || []).map((item) => `<option value="${item.path}">${item.path}</option>`));
+                uploadFolderSelect.innerHTML = uploadOptions.join('');
+
+                uploadFolderSelect.disabled = !hasFolders;
+                uploadFileBtn.disabled = !hasFolders;
+                if (!hasFolders) {
+                    uploadFileBtn.innerText = 'Add Folder First';
+                } else if (uploadFileBtn.innerText === 'Add Folder First') {
+                    uploadFileBtn.innerText = 'Upload File';
+                }
+            }
+
+            function renderUploadedFiles(items) {
+                uploadedFilesList.innerHTML = '';
+                if (!items || items.length === 0) {
+                    uploadedFilesList.innerHTML = '<li style="color:#64748b;">No secured files uploaded yet.</li>';
+                    return;
+                }
+                items.forEach((item) => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `
+                        <div style="display: flex; justify-content: space-between; gap: 10px; width: 100%; align-items: center;">
+                            <span><i class="fas fa-file-alt" style="color:#1d4ed8;"></i> ${item.original_name}</span>
+                            <span style="font-size: 0.78rem; color: #64748b;">${item.folder_path}</span>
+                        </div>
+                    `;
+                    uploadedFilesList.appendChild(li);
+                });
+            }
+
+            function setUploadFileState(fileObj) {
+                if (fileObj) {
+                    uploadFileName.textContent = fileObj.name;
+                    uploadFileName.classList.add('has-file');
+                    uploadFileWrap.classList.remove('empty');
+                } else {
+                    uploadFileName.textContent = 'No file selected';
+                    uploadFileName.classList.remove('has-file');
+                    uploadFileWrap.classList.add('empty');
+                }
+            }
+
+            async function fetchUploadedFiles() {
+                try {
+                    const res = await fetch('/api/secured-files');
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.error || 'Failed to load uploaded files.');
+                    renderUploadedFiles(data);
+                } catch (err) {
+                    console.error('Secured files fetch error:', err);
+                }
+            }
+
+            async function fetchSecuredFolders() {
+                try {
+                    const res = await fetch('/api/secured-folders');
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.error || 'Failed to load folders.');
+                    renderFolderList(data);
+                    refreshFolderSelectOptions(data);
+                } catch (err) {
+                    console.error('Secured folder fetch error:', err);
+                }
+            }
+
+            closeFolderModal.addEventListener('click', closeFolder);
+            cancelFolderModal.addEventListener('click', closeFolder);
+
+            folderConfigForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                const pathValue = folderPathSelect.value.trim();
+                if(pathValue) {
+                    try {
+                        const res = await fetch('/api/secured-folders', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ path: pathValue })
+                        });
+                        const data = await res.json();
+                        if (!res.ok || !data.success) {
+                            triggerSuccessToast(data.error || 'Unable to add folder.');
+                            return;
+                        }
+                        await fetchSecuredFolders();
+                        await fetchUploadedFiles();
+                        triggerSuccessToast('Folder added to secured monitoring list.');
+                        closeFolder();
+                    } catch (err) {
+                        console.error('Add secured folder error:', err);
+                    }
                 }
             });
 
-            window.removeFolderElement = function(element) {
-                element.closest('li').remove();
-            };
+            folderList.addEventListener('click', async function(e) {
+                const deleteBtn = e.target.closest('.delete-folder-btn');
+                if (!deleteBtn) return;
+                const folderId = deleteBtn.getAttribute('data-id');
+                if (!folderId) return;
+                try {
+                    const res = await fetch(`/api/secured-folders/${folderId}`, { method: 'DELETE' });
+                    const data = await res.json();
+                    if (!res.ok || !data.success) {
+                        triggerSuccessToast(data.error || 'Unable to remove folder.');
+                        return;
+                    }
+                    await fetchSecuredFolders();
+                    await fetchUploadedFiles();
+                    triggerSuccessToast('Folder removed from secured monitoring list.');
+                    closeFolder();
+                } catch (err) {
+                    console.error('Remove secured folder error:', err);
+                }
+            });
+
+            uploadFileForm.addEventListener('submit', async function (e) {
+                e.preventDefault();
+                const selectedFolder = (uploadFolderSelect.value || '').trim();
+                const selectedFile = uploadFileInput.files && uploadFileInput.files[0];
+                if (!selectedFolder) {
+                    triggerSuccessToast('Select target folder first.', 'error');
+                    return;
+                }
+                if (!selectedFile) {
+                    triggerSuccessToast('Choose a file to upload.', 'error');
+                    setUploadFileState(null);
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append('folder_path', selectedFolder);
+                formData.append('file', selectedFile);
+
+                uploadFileBtn.disabled = true;
+                uploadFileBtn.innerText = 'Uploading...';
+                try {
+                    const res = await fetch('/api/secured-files/upload', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const data = await res.json();
+                    if (!res.ok || !data.success) {
+                        triggerSuccessToast(data.error || 'File upload failed.', 'error');
+                        return;
+                    }
+                    triggerSuccessToast(`File uploaded to ${selectedFolder}`, 'success');
+                    uploadFileForm.reset();
+                    setUploadFileState(null);
+                    await fetchUploadedFiles();
+                } catch (err) {
+                    console.error('Upload secured file error:', err);
+                    triggerSuccessToast('Upload network error.', 'error');
+                } finally {
+                    uploadFileBtn.disabled = false;
+                    uploadFileBtn.innerText = 'Upload File';
+                }
+            });
 
             // ==========================================
             // PICTURE 1 & 2: MANAGE KEYS MODAL & TOAST FLOW
@@ -455,11 +710,18 @@
             });
 
             // Function dynamically spawning the custom green toast (Picture 2)
-            function triggerSuccessToast(message) {
+            uploadFileInput.addEventListener('change', function() {
+                const selectedFile = uploadFileInput.files && uploadFileInput.files[0];
+                setUploadFileState(selectedFile || null);
+            });
+
+            function triggerSuccessToast(message, type = 'success') {
+                const isError = type === 'error';
                 const toast = document.createElement('div');
                 toast.className = 'toast-box';
+                toast.style.borderLeftColor = isError ? '#ef4444' : '#22c55e';
                 toast.innerHTML = `
-                    <i class="fas fa-check-circle" style="color: #22c55e; font-size: 1.2rem;"></i>
+                    <i class="fas ${isError ? 'fa-exclamation-circle' : 'fa-check-circle'}" style="color: ${isError ? '#ef4444' : '#22c55e'}; font-size: 1.2rem;"></i>
                     <div style="flex: 1; line-height: 1.4; font-weight: 500; font-size: 0.9rem; color: #334155;">${message}</div>
                     <i class="fas fa-times" style="color: #cbd5e1; cursor: pointer; margin-left: 8px;" onclick="this.parentElement.remove()"></i>
                 `;
@@ -485,6 +747,10 @@
                 if (e.target === folderModal) closeFolder();
                 if (e.target === keyConfirmModal) closeKeyConfirmModal();
             });
+
+            fetchSecuredFolders();
+            fetchUploadedFiles();
+            setUploadFileState(null);
         });
     </script>
     <script src="{{ url_for('static', filename='script.js') }}"></script>

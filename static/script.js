@@ -24,7 +24,26 @@ document.addEventListener('DOMContentLoaded', () => {
     const logsList = document.getElementById('activityLogsList');
 
     // ==========================================
-    // 0. FETCH & RENDER DASHBOARD STATS
+    // 0. DASHBOARD STAT CARDS (CLICKABLE)
+    // ==========================================
+    function initDashboardStatCardLinks() {
+        document.querySelectorAll('.stat-card-link').forEach((card) => {
+            const target = card.getAttribute('data-href') || card.getAttribute('href');
+            if (!target) return;
+            card.setAttribute('tabindex', '0');
+            const navigate = () => window.location.assign(target);
+            card.addEventListener('click', navigate);
+            card.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    navigate();
+                }
+            });
+        });
+    }
+
+    // ==========================================
+    // 0b. FETCH & RENDER DASHBOARD STATS
     // ==========================================
     async function fetchDashboardStats() {
         const statCards = document.querySelector('.stat-cards-grid');
@@ -35,21 +54,85 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!response.ok) throw new Error('Failed to fetch stats');
             const data = await response.json();
 
-            // I-update ang values sa UI base sa mapping ng order sa CSS
-            const values = document.querySelectorAll('.stat-card-mini .card-info .value');
-            if (values.length >= 4) {
-                values[0].innerText = data.total_alerts || 0;
-                values[1].innerText = data.blocked_threats || 0;
-                values[2].innerText = data.active_policies || 0;
-                values[3].innerText = data.total_devices || 0;
+            const filesSecuredEl = document.getElementById('filesSecured');
+            const threatsBlockedEl = document.getElementById('threatsBlocked');
+            const incidentsDetectedEl = document.getElementById('incidentsDetected');
+            const complianceStatusEl = document.getElementById('complianceStatus');
+
+            if (filesSecuredEl) filesSecuredEl.innerText = data.files_secured ?? 0;
+            if (threatsBlockedEl) threatsBlockedEl.innerText = data.blocked_threats ?? 0;
+            if (incidentsDetectedEl) incidentsDetectedEl.innerText = data.incidents_detected ?? 0;
+            if (complianceStatusEl) {
+                complianceStatusEl.innerText = data.compliance_status || 'Unknown';
+                complianceStatusEl.classList.remove('green', 'status-green', 'status-red');
+                if (data.compliance_class === 'status-green') {
+                    complianceStatusEl.classList.add('green', 'status-green');
+                } else if (data.compliance_class === 'status-red') {
+                    complianceStatusEl.classList.add('status-red');
+                }
             }
 
-            // I-update din ang Incident Count display kung nandoon (Incident Page)
-            const bigNumber = document.querySelector('.big-number');
-            if (bigNumber) bigNumber.innerText = data.total_alerts || 0;
+            const incidentBigCount = document.getElementById('incidentBigCount');
+            if (incidentBigCount) incidentBigCount.innerText = data.incidents_detected ?? 0;
+
+            const threatCredentialCount = document.getElementById('threatCredentialCount');
+            const threatPolicyCount = document.getElementById('threatPolicyCount');
+            const threatExposureCount = document.getElementById('threatExposureCount');
+            if (threatCredentialCount) threatCredentialCount.innerText = data.credential_misuse ?? 0;
+            if (threatPolicyCount) threatPolicyCount.innerText = data.policy_bypass ?? 0;
+            if (threatExposureCount) threatExposureCount.innerText = data.data_exposure ?? 0;
+
+            const filesEncryptedCount = document.getElementById('filesEncryptedCount');
+            const encryptionComplianceStatus = document.getElementById('encryptionComplianceStatus');
+            if (filesEncryptedCount) filesEncryptedCount.innerText = data.files_secured ?? 0;
+            if (encryptionComplianceStatus) {
+                encryptionComplianceStatus.innerText = data.encryption_compliance || 'Pending';
+                encryptionComplianceStatus.classList.remove('text-green', 'text-orange');
+                encryptionComplianceStatus.classList.add(
+                    data.encryption_compliance_class || 'text-orange'
+                );
+            }
 
         } catch (error) {
             console.error('Error updating dashboard stats:', error);
+        }
+    }
+
+    async function fetchPolicyViolations() {
+        const violationsList = document.getElementById('policyViolationsList');
+        if (!violationsList) return;
+
+        try {
+            const response = await fetch(`${API_BASE}/alerts`);
+            if (!response.ok) throw new Error('Failed to fetch policy violations');
+            const alerts = await response.json();
+            const violations = (alerts || []).filter((alert) => {
+                const status = (alert.status || '').toLowerCase();
+                const activity = (alert.activity || '').toLowerCase();
+                const threatType = (alert.threat_type || '').toLowerCase();
+                return (
+                    status === 'prompted' ||
+                    status === 'tagged' ||
+                    threatType.includes('policy') ||
+                    activity.includes('policy') ||
+                    activity.includes('pii') ||
+                    activity.includes('export') ||
+                    activity.includes('usb')
+                );
+            }).slice(0, 5);
+
+            if (violations.length === 0) {
+                violationsList.innerHTML = '<li class="meta">No active policy violations detected.</li>';
+                return;
+            }
+
+            violationsList.innerHTML = violations.map((alert) => {
+                const label = alert.activity || alert.details || 'Policy violation detected';
+                return `<li><input type="checkbox" checked disabled> ${label}</li>`;
+            }).join('');
+        } catch (error) {
+            console.error('Error loading policy violations:', error);
+            violationsList.innerHTML = '<li class="meta">Unable to load policy violations.</li>';
         }
     }
 
@@ -113,15 +196,16 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             logs.forEach(log => {
-            const li = document.createElement('li');
-            li.innerHTML = `
-                <i class="fas ${log.icon}" style="color: #1e3a5f; width: 20px;"></i>
-                <div class="alert-info" style="flex: 1; display: flex; justify-content: space-between;">
-                    <h4 style="font-weight: 500;">${log.activity}</h4>
-                    <span class="meta">${log.time}</span>
-                </div>
-            `;
-            logsList.appendChild(li);
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <i class="fas ${log.icon || 'fa-clipboard-list'}" style="color: #1e3a5f; width: 20px;"></i>
+                    <div class="alert-info" style="flex: 1;">
+                        <h4 style="font-weight: 500; margin: 0 0 4px 0;">${log.activity}</h4>
+                        <p class="meta" style="margin: 0;">${log.source || 'System'} · ${log.user || 'System'}</p>
+                        <span class="meta">${log.time}</span>
+                    </div>
+                `;
+                logsList.appendChild(li);
             });
         } catch (error) {
             console.error('Error loading logs:', error);
@@ -131,24 +215,40 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================
     // 2. DYNAMIC THREAT LINE CHART (DASHBOARD)
     // ==========================================
-    function initLineChart() {
+    async function initLineChart() {
         const chartElement = document.getElementById('threatLineChart');
         if (!chartElement) return;
         const ctx = chartElement.getContext('2d');
-        
+
         if (window.threatChart) window.threatChart.destroy();
 
         const gradient = ctx.createLinearGradient(0, 0, 0, 150);
         gradient.addColorStop(0, 'rgba(33, 150, 243, 0.5)');
         gradient.addColorStop(1, 'rgba(33, 150, 243, 0)');
 
+        let labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+        let values = [0, 0, 0, 0, 0];
+
+        try {
+            const response = await fetch(`${API_BASE}/threat-trend`);
+            if (response.ok) {
+                const trendData = await response.json();
+                labels = trendData.labels || labels;
+                values = trendData.data || values;
+            }
+        } catch (error) {
+            console.error('Error loading threat trend:', error);
+        }
+
+        const maxValue = Math.max(...values, 1);
+
         window.threatChart = new Chart(ctx, {
             type: 'line',
             data: {
-                labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+                labels,
                 datasets: [{
                     label: 'Threats',
-                    data: [1, 3, 2, 4, 6], 
+                    data: values,
                     borderColor: '#2196f3',
                     borderWidth: 3,
                     fill: true,
@@ -163,7 +263,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 maintainAspectRatio: false,
                 plugins: { legend: { display: false } },
                 scales: {
-                    y: { beginAtZero: true, max: 6, ticks: { stepSize: 2, color: '#aaa', font: { size: 10 } } },
+                    y: {
+                        beginAtZero: true,
+                        suggestedMax: maxValue + 1,
+                        ticks: { stepSize: 1, color: '#aaa', font: { size: 10 }, precision: 0 }
+                    },
                     x: { ticks: { color: '#aaa', font: { size: 10 } } }
                 }
             }
@@ -546,6 +650,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const grid = document.querySelector('.encryption-settings-grid');
         if (!grid) return;
 
+        // Encryption page has its own modal workflow. Skip legacy prompt/alert bindings.
+        if (document.getElementById('folderModalOverlay') || document.getElementById('folderConfigForm')) {
+            return;
+        }
+
         const addFolderBtn = grid.querySelector('.card:nth-child(1) .btn-blue');
         if (addFolderBtn) {
             addFolderBtn.addEventListener('click', () => {
@@ -575,6 +684,9 @@ document.addEventListener('DOMContentLoaded', () => {
     function initIncidentResponse() {
         const pageTitle = document.querySelector('.page-title-section h1');
         if (!pageTitle || !pageTitle.innerText.trim().includes("Incident Response")) return;
+
+        // Incident page has its own modal + API workflow in incident.html.
+        if (document.getElementById('incidentResponseForm')) return;
 
         const incidentTable = document.querySelector('.policy-table');
         if (!incidentTable) return;
@@ -638,25 +750,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // 9. LOGS AUDIT TRAIL DATA EXPORTER
     // ==========================================
     function initActivityLogsPage() {
-        const pageTitle = document.querySelector('.page-title-section h1');
-        if (!pageTitle || !pageTitle.innerText.trim().includes("Activity Logs")) return;
-
-        const exportBtn = document.querySelector('.action-buttons .btn-blue-outline');
-        if (exportBtn) {
-            exportBtn.addEventListener('click', () => {
-                const logRows = document.querySelectorAll('.policy-table tbody tr');
-                const logCount = logRows.length;
-
-                exportBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Exporting...';
-                exportBtn.style.pointerEvents = "none";
-
-                setTimeout(() => {
-                    alert(`Audit Trail Exported Successfully!\nGenerated security_logs.csv containing ${logCount} event rows.`);
-                    exportBtn.innerHTML = '<i class="fas fa-download"></i> Export CSV';
-                    exportBtn.style.pointerEvents = "auto";
-                }, 1500);
-            });
-        }
+        const pageTitle = document.querySelector('.top-nav.top-nav-title-only .page-title-section h1');
+        if (!pageTitle || !pageTitle.innerText.trim().includes('Activity Logs')) return;
+        // Export flow is handled in logs.html (no browser alert / auto-download).
     }
 
     // ==========================================
@@ -1055,6 +1151,134 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ==========================================
+    // 11. SUPPORT PAGE (LIVE CHAT + EMAIL)
+    // ==========================================
+    function initOllamaChatWidget() {
+        const overlay = document.getElementById('supportChatOverlay');
+        const closeBtn = document.getElementById('closeLiveChatBtn');
+        const form = document.getElementById('supportChatForm');
+        const input = document.getElementById('supportChatMessage');
+        const body = document.getElementById('supportChatBody');
+        const openButtons = [
+            document.getElementById('openLiveChatBtn'),
+            document.getElementById('dashboardChatFab'),
+        ].filter(Boolean);
+
+        if (!overlay || !closeBtn || !form || !input || !body || openButtons.length === 0) return;
+
+        const setOpen = (open) => {
+            overlay.classList.toggle('show', open);
+            overlay.setAttribute('aria-hidden', open ? 'false' : 'true');
+            if (open) {
+                setTimeout(() => input.focus(), 50);
+                body.scrollTop = body.scrollHeight;
+            }
+        };
+
+        const addBubble = (text, who) => {
+            const div = document.createElement('div');
+            div.className = `support-chat-bubble ${who}`;
+            div.textContent = text;
+            body.appendChild(div);
+            body.scrollTop = body.scrollHeight;
+        };
+
+        let isSending = false;
+        let chatHistory = [];
+
+        const initialAgentBubble = body.querySelector('.support-chat-bubble.agent');
+        if (initialAgentBubble?.textContent?.trim()) {
+            chatHistory.push({
+                role: 'assistant',
+                content: initialAgentBubble.textContent.trim()
+            });
+        }
+
+        openButtons.forEach((btn) => btn.addEventListener('click', () => setOpen(true)));
+        closeBtn.addEventListener('click', () => setOpen(false));
+
+        // Click outside closes modal
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) setOpen(false);
+        });
+
+        // ESC closes modal
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && overlay.classList.contains('show')) setOpen(false);
+        });
+
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            if (isSending) return;
+
+            const msg = (input.value || '').trim();
+            if (!msg) return;
+
+            addBubble(msg, 'user');
+            chatHistory.push({ role: 'user', content: msg });
+            input.value = '';
+            isSending = true;
+            input.disabled = true;
+
+            const typingEl = document.createElement('div');
+            typingEl.className = 'support-chat-bubble agent';
+            typingEl.textContent = 'Thinking... (first reply may take 1-2 minutes on slower PCs)';
+            body.appendChild(typingEl);
+            body.scrollTop = body.scrollHeight;
+
+            const slowHintTimer = setTimeout(() => {
+                if (typingEl.isConnected) {
+                    typingEl.textContent = 'Still working... loading llama3 on your machine. Please wait.';
+                }
+            }, 20000);
+
+            fetch('/api/support/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    message: msg,
+                    messages: chatHistory.filter((m) => m.role === 'assistant' || m.role === 'user').slice(0, -1)
+                })
+            })
+                .then(async (res) => {
+                    const rawText = await res.text();
+                    let data = {};
+                    try {
+                        data = rawText ? JSON.parse(rawText) : {};
+                    } catch {
+                        data = {};
+                    }
+
+                    if (!res.ok || !data.success) {
+                        // If session expired/login redirect happened, Flask may return HTML.
+                        if (!data.error && rawText && rawText.includes('<!DOCTYPE html')) {
+                            throw new Error('Session expired. Please log in again and retry chat.');
+                        }
+                        throw new Error(data.error || data.message || `Support chat failed (${res.status}).`);
+                    }
+                    return data.reply || '';
+                })
+                .then((reply) => {
+                    clearTimeout(slowHintTimer);
+                    typingEl.remove();
+                    addBubble(reply || 'No reply received.', 'agent');
+                    chatHistory.push({ role: 'assistant', content: reply || 'No reply received.' });
+                })
+                .catch((err) => {
+                    clearTimeout(slowHintTimer);
+                    typingEl.textContent = `Error: ${err.message || 'Unable to reach support chat service.'}`;
+                    typingEl.style.color = '#ef4444';
+                })
+                .finally(() => {
+                    clearTimeout(slowHintTimer);
+                    isSending = false;
+                    input.disabled = false;
+                    input.focus();
+                });
+        });
+    }
+
+    // ==========================================
     // GLOBAL UI CONTROLS
     // ==========================================
     const closeIcon = document.querySelector(".close-icon");
@@ -1074,92 +1298,210 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!menu) {
             icon.insertAdjacentHTML('beforeend', `
                 <div class="notification-menu" id="dashboardNotificationMenu">
-                    <div class="notification-menu-title">Notifications</div>
+                    <div class="notification-menu-title">Recent Activity</div>
                     <ul id="notificationList">
-                        <li class="notification-empty">Loading notifications...</li>
+                        <li class="notification-empty">Loading activity...</li>
                     </ul>
+                    <a href="/logs" class="notification-menu-footer">View all in Activity Logs <i class="fas fa-arrow-right"></i></a>
                 </div>
             `);
             menu = icon.querySelector('.notification-menu');
         }
         if (!icon.querySelector('.badge')) {
             const bell = icon.querySelector('i');
-            const badgeHtml = '<span class="badge" id="notificationBadge">0</span>';
+            const badgeHtml = '<span class="badge is-hidden" id="notificationBadge">0</span>';
             if (bell) bell.insertAdjacentHTML('afterend', badgeHtml);
             else icon.insertAdjacentHTML('beforeend', badgeHtml);
         }
         return menu;
     }
 
-    function renderNotifications(items) {
-        const list = document.getElementById('notificationList');
+    let latestNotificationId = 0;
+
+    function updateNotificationBadge(unreadCount) {
         const badge = document.getElementById('notificationBadge');
+        if (!badge) return;
+        const unread = Number(unreadCount) || 0;
+        if (unread <= 0) {
+            badge.classList.add('is-hidden');
+            badge.textContent = '0';
+            return;
+        }
+        badge.classList.remove('is-hidden');
+        badge.textContent = unread > 9 ? '9+' : String(unread);
+    }
+
+    function renderNotifications(payload) {
+        const list = document.getElementById('notificationList');
         if (!list) return;
 
+        const items = Array.isArray(payload) ? payload : (payload?.items || []);
+        const unreadCount = Array.isArray(payload) ? 0 : (payload?.unread_count || 0);
+        if (!Array.isArray(payload) && payload?.latest_id) {
+            latestNotificationId = payload.latest_id;
+        }
+
+        updateNotificationBadge(unreadCount);
+
         if (!items || items.length === 0) {
-            list.innerHTML = '<li class="notification-empty">No notifications right now.</li>';
-            if (badge) badge.textContent = '0';
+            list.innerHTML = '<li class="notification-empty">No activity recorded yet.</li>';
             return;
         }
 
         list.innerHTML = items.map((item) => `
-            <li>
-                <div class="notification-item">
-                    <i class="fas ${item.icon || 'fa-bell'}"></i>
-                    <div class="notification-item-content">
-                        <div class="notification-item-category">${item.category}</div>
-                        <div class="notification-item-message">${item.message}</div>
-                        <div class="notification-item-time">${item.time || ''}</div>
+            <li class="${item.is_unread ? 'notification-unread' : ''}">
+                <a class="notification-item-link" href="${item.href || '/logs'}">
+                    <div class="notification-item">
+                        <i class="fas ${item.icon || 'fa-clipboard-list'}"></i>
+                        <div class="notification-item-content">
+                            <div class="notification-item-category">${item.category || 'System Event'}</div>
+                            <div class="notification-item-message">${item.message || ''}</div>
+                            <div class="notification-item-meta">${item.user || 'System'} · ${item.status || 'logged'}</div>
+                            <div class="notification-item-time">${item.time || ''}</div>
+                        </div>
                     </div>
-                </div>
+                </a>
             </li>
         `).join('');
+    }
 
-        if (badge) badge.textContent = String(items.length);
+    async function markNotificationsRead() {
+        try {
+            await fetch('/api/notifications/mark-read', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ last_id: latestNotificationId }),
+            });
+            updateNotificationBadge(0);
+            document.querySelectorAll('#notificationList .notification-unread').forEach((el) => {
+                el.classList.remove('notification-unread');
+            });
+        } catch (error) {
+            console.error('Mark notifications read error:', error);
+        }
     }
 
     async function fetchNotifications() {
         const list = document.getElementById('notificationList');
-        if (!list) return;
+        if (!list) return null;
 
         try {
             const response = await fetch('/api/notifications');
             if (!response.ok) throw new Error('Failed to load notifications');
             const data = await response.json();
             renderNotifications(data);
+            return data;
         } catch (error) {
             console.error('Notification fetch error:', error);
-            list.innerHTML = '<li class="notification-empty">Unable to load notifications.</li>';
+            list.innerHTML = '<li class="notification-empty">Unable to load activity feed.</li>';
+            updateNotificationBadge(0);
+            return null;
         }
     }
 
     function initDashboardNotifications() {
-        const notificationIcon = document.querySelector('.notification-icon');
+        const notificationIcon = document.getElementById('dashboardNotificationIcon');
         if (!notificationIcon) return;
 
         ensureNotificationMenu(notificationIcon);
         fetchNotifications();
 
         const notificationMenu = notificationIcon.querySelector('.notification-menu');
-        notificationIcon.addEventListener('click', (e) => {
+        notificationIcon.addEventListener('click', async (e) => {
+            if (e.target.closest('.notification-item-link, .notification-menu-footer')) {
+                return;
+            }
             e.stopPropagation();
+            const willOpen = !notificationMenu?.classList.contains('show');
+            if (willOpen) {
+                closeDashboardMenus(notificationMenu);
+            }
             notificationMenu?.classList.toggle('show');
-            if (notificationMenu?.classList.contains('show')) {
-                fetchNotifications();
+            if (willOpen) {
+                const data = await fetchNotifications();
+                if (data) {
+                    await markNotificationsRead();
+                }
+            }
+        });
+
+        notificationMenu?.addEventListener('click', (e) => {
+            if (e.target.closest('.notification-item-link, .notification-menu-footer')) {
+                notificationMenu.classList.remove('show');
+                markNotificationsRead();
+            }
+        });
+    }
+
+    function closeDashboardMenus(exceptMenu = null) {
+        document.querySelectorAll('.notification-menu.show, .user-menu.show').forEach((menu) => {
+            if (menu === exceptMenu) return;
+            menu.classList.remove('show');
+        });
+        const userPill = document.getElementById('dashboardUserPill');
+        if (userPill && (!exceptMenu || !exceptMenu.classList.contains('user-menu'))) {
+            userPill.classList.remove('is-open');
+            userPill.setAttribute('aria-expanded', 'false');
+        }
+    }
+
+    function initDashboardUserMenu() {
+        const userPill = document.getElementById('dashboardUserPill');
+        const userMenu = document.getElementById('dashboardUserMenu');
+        if (!userPill || !userMenu) return;
+
+        const setOpen = (open) => {
+            userMenu.classList.toggle('show', open);
+            userPill.classList.toggle('is-open', open);
+            userPill.setAttribute('aria-expanded', open ? 'true' : 'false');
+        };
+
+        const toggleMenu = (e) => {
+            if (e.target.closest('.user-menu a')) return;
+            e.stopPropagation();
+            const willOpen = !userMenu.classList.contains('show');
+            closeDashboardMenus(willOpen ? userMenu : null);
+            setOpen(willOpen);
+        };
+
+        userPill.addEventListener('click', toggleMenu);
+        userPill.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                toggleMenu(e);
+            }
+            if (e.key === 'Escape') {
+                setOpen(false);
+            }
+        });
+
+        userMenu.addEventListener('click', (e) => {
+            if (e.target.closest('a')) {
+                setOpen(false);
             }
         });
     }
 
     document.addEventListener('click', (e) => {
         const notificationMenu = document.querySelector('.notification-menu.show');
-        if (!notificationMenu) return;
-        const icon = notificationMenu.closest('.notification-icon');
-        if (icon && !icon.contains(e.target)) {
-            notificationMenu.classList.remove('show');
+        if (notificationMenu) {
+            const icon = notificationMenu.closest('.notification-icon');
+            if (icon && !icon.contains(e.target) && !e.target.closest('#dashboardUserPill')) {
+                notificationMenu.classList.remove('show');
+            }
+        }
+
+        const userMenu = document.querySelector('.user-menu.show');
+        if (userMenu) {
+            const pill = document.getElementById('dashboardUserPill');
+            if (pill && !pill.contains(e.target)) {
+                closeDashboardMenus();
+            }
         }
     });
 
     initDashboardNotifications();
+    initDashboardUserMenu();
 
     // ==========================================
     // ELEMENT-BASED ROUTER EXECUTION
@@ -1167,9 +1509,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (document.getElementById('threatLineChart')) {
         initLineChart();
     }
-    // I-load ang stats sa main dashboard
     if (document.querySelector('.stat-cards-grid')) {
+        initDashboardStatCardLinks();
         fetchDashboardStats();
+        fetchPolicyViolations();
     }
     if (alertsList) {
         fetchAlerts();
@@ -1183,12 +1526,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // AUTO-REFRESH: Tuwing 10 segundo para magmukhang live ang data
-    if (document.querySelector('.stat-cards-grid') || alertsList) {
+    if (document.querySelector('.stat-cards-grid') || alertsList || logsList) {
         setInterval(() => {
             fetchDashboardStats();
+            if (document.getElementById('policyViolationsList')) fetchPolicyViolations();
             if (alertsList) fetchAlerts();
-            fetchLogs();
+            if (logsList) fetchLogs();
             if (document.getElementById('notificationList')) fetchNotifications();
+            if (document.getElementById('threatLineChart') && window.threatChart) {
+                initLineChart();
+            }
         }, 10000);
     }
 
@@ -1205,4 +1552,5 @@ document.addEventListener('DOMContentLoaded', () => {
     initBackupSettingsPage();
     initSidebarDropdowns();
     initChangePasswordForm();
+    initOllamaChatWidget();
 });

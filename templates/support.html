@@ -7,8 +7,40 @@
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body.ciphersync-support-page .top-nav.top-nav-title-only {
+            width: 100%;
+            min-height: 125px;
+            height: 125px;
+            padding: 0 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-sizing: border-box;
+        }
+
+        body.ciphersync-support-page .top-nav.top-nav-title-only .page-title-section {
+            margin: 0;
+            width: 100%;
+            text-align: center;
+        }
+
+        body.ciphersync-support-page .top-nav.top-nav-title-only .page-title-section h1 {
+            margin: 0;
+            font-size: 2rem;
+            font-weight: 700;
+            color: #ffffff;
+            letter-spacing: 0.3px;
+            line-height: 1.15;
+        }
+
+        body.ciphersync-support-page .content-area.support-page > .page-title-section {
+            margin-top: 8px;
+            margin-bottom: 22px;
+        }
+    </style>
 </head>
-<body>
+<body class="ciphersync-support-page">
     <div class="app-container">
         <!-- Sidebar -->
         <aside class="sidebar">
@@ -49,51 +81,117 @@
         </aside>
 
         <div class="main-wrapper">
-            <header class="top-nav">
-                <div class="top-nav-left">
-                    <button id="sidebarToggle" class="sidebar-toggle">
-                        <i class="fas fa-bars"></i>
-                    </button>
-                    <div class="top-nav-brand">
-                        <img src="{{ url_for('static', filename='logo.png') }}" alt="CipherSync" class="top-nav-logo">
-                    </div>
-                </div>
-                <div class="top-nav-actions">
-                    <div class="notification-icon">
-                        <i class="fas fa-bell"></i>
-                        <span class="badge">1</span>
-                    </div>
+            <header class="top-nav top-nav-title-only">
+                <div class="page-title-section">
+                    <h1>Support</h1>
                 </div>
             </header>
 
-            <main class="content-area">
+            <main class="content-area support-page">
                 <div class="page-title-section">
-                    <h1>Support</h1>
-                    <p>Security operations support, escalation, and implementation guidance</p>
+                    <p>Reach the SOC team for help, escalations, and implementation guidance.</p>
                 </div>
 
-                <div class="card">
-                    <div class="card-header"><h3>Contact Technical Support</h3></div>
-                    <div class="card-body">
-                        <p style="margin-bottom: 20px;">Contact the SOC support desk for policy tuning, false-positive triage, and incident escalation support.</p>
-                        <div class="action-buttons" style="flex-direction: row; gap: 20px;">
-                            <button class="btn btn-blue"><i class="fas fa-comments"></i> Live Chat</button>
-                            <button class="btn btn-blue-outline"><i class="fas fa-envelope"></i> Email Support</button>
+                <section class="support-panel">
+                    <div class="support-panel-header">
+                        <h3>Contact Technical Support</h3>
+                        <p>Use the channels below for policy tuning, false-positive triage, and incident escalation.</p>
+                    </div>
+
+                    <div class="support-grid">
+                        <div class="support-item">
+                            <h4><i class="fas fa-phone"></i> Hotline</h4>
+                            <div class="support-value">+1 (800) 555‑0134</div>
+                            <div class="support-help">Critical security incidents, data loss, or suspected compromise.</div>
+                            <div class="support-meta"><span class="support-badge support-badge-green">Priority 1 – 15 min response</span></div>
+                        </div>
+
+                        <div class="support-item">
+                            <h4><i class="fas fa-envelope-open-text"></i> Email</h4>
+                            <div class="support-value"><a href="mailto:ciphersync.security@gmail.com">ciphersync.security@gmail.com</a></div>
+                            <div class="support-help">Non-urgent questions, tuning requests, onboarding help, and reports.</div>
+                            <div class="support-meta"><span class="support-badge support-badge-blue">Business hours – same day</span></div>
+                        </div>
+
+                        <div class="support-item">
+                            <h4><i class="fas fa-clock"></i> Support Hours</h4>
+                            <div class="support-help"><strong>24/7</strong> for high severity incidents</div>
+                            <div class="support-help"><strong>Mon–Fri, 8:00–18:00</strong> for standard requests</div>
+                            <div class="support-help">Timezone: UTC+8 (customer localized)</div>
                         </div>
                     </div>
-                </div>
 
-                <div class="card" style="margin-top: 20px;">
-                    <div class="card-header"><h3>Quick Documentation</h3></div>
-                    <div class="card-body">
-                        <ul class="violations-list">
-                            <li><i class="fas fa-book"></i> DLP Policy Authoring Guide</li>
-                            <li><i class="fas fa-book"></i> Sensitive Data Classification Matrix</li>
-                            <li><i class="fas fa-book"></i> Incident Containment Runbook</li>
-                        </ul>
+                    <div class="support-actions">
+                        <button class="btn btn-blue" type="button" id="openLiveChatBtn">
+                            <i class="fas fa-comments"></i> Open Live Chat
+                        </button>
+                        <a
+                            class="btn btn-blue-outline"
+                            id="emailSocBtn"
+                            href="mailto:ciphersync.security@gmail.com?subject=CipherSync%20Support%20Request&body=Hi%20SOC%20Team%2C%0A%0APlease%20help%20with%3A%0A-%20Issue%3A%20%0A-%20Severity%20(P1%2FP2%2FP3)%3A%20%0A-%20Time%20Observed%3A%20%0A-%20User%2FDevice%3A%20%0A-%20Relevant%20Alert%20ID%3A%20%0A%0AThanks."
+                        >
+                            <i class="fas fa-envelope"></i> Email SOC
+                        </a>
                     </div>
-                </div>
+                </section>
+
+                <section class="support-panel" style="margin-top: 18px;">
+                    <div class="support-panel-header">
+                        <h3>Quick Documentation</h3>
+                        <p>Common runbooks and references to resolve issues faster.</p>
+                    </div>
+
+                    <ul class="support-docs">
+                        <li>
+                            <i class="fas fa-book"></i>
+                            <span><strong>DLP Policy Authoring Guide</strong> – step‑by‑step examples for creating and tuning policies.</span>
+                        </li>
+                        <li>
+                            <i class="fas fa-book"></i>
+                            <span><strong>Sensitive Data Classification Matrix</strong> – reference for what CipherSync treats as sensitive data.</span>
+                        </li>
+                        <li>
+                            <i class="fas fa-book"></i>
+                            <span><strong>Incident Containment Runbook</strong> – actions to take for high, medium, and low‑risk alerts.</span>
+                        </li>
+                    </ul>
+                </section>
             </main>
+
+            <!-- Live Chat Modal -->
+            <div class="support-chat-overlay" id="supportChatOverlay" aria-hidden="true">
+                <div class="support-chat-modal" role="dialog" aria-modal="true" aria-labelledby="supportChatTitle">
+                    <div class="support-chat-header">
+                        <div>
+                            <div class="support-chat-title" id="supportChatTitle">Live Chat – SOC Support</div>
+                            <div class="support-chat-subtitle">We typically respond within a few minutes for standard requests.</div>
+                        </div>
+                        <button type="button" class="support-chat-close" id="closeLiveChatBtn" aria-label="Close live chat">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+
+                    <div class="support-chat-body" id="supportChatBody">
+                        <div class="support-chat-bubble agent">
+                            Hello! Please share your issue and severity (P1/P2/P3). If you have an alert ID, include it as well.
+                        </div>
+                    </div>
+
+                    <form class="support-chat-input" id="supportChatForm">
+                        <input
+                            type="text"
+                            id="supportChatMessage"
+                            placeholder="Type your message…"
+                            autocomplete="off"
+                            maxlength="500"
+                            required
+                        >
+                        <button type="submit" class="btn btn-blue support-chat-send">
+                            <i class="fas fa-paper-plane"></i> Send
+                        </button>
+                    </form>
+                </div>
+            </div>
         </div>
     </div>
     <script src="{{ url_for('static', filename='script.js') }}"></script>

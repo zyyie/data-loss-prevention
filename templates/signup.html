@@ -37,20 +37,33 @@
         }
 
         .signup-header img {
-            width: 95px;
-            margin-bottom: 10px;
+            width: 150px;
+            height: 150px;
+            object-fit: contain;
+            margin-bottom: 4px;
+        }
+
+        .signup-welcome {
+            color: #fff;
+            margin: 0;
+            font-size: 2.75rem;
+            font-weight: 800;
+            letter-spacing: 0.3px;
+            line-height: 1.1;
         }
 
         .signup-header h1 {
-            color: #fff;
-            margin: 0;
-            font-size: 2rem;
+            color: #f1f5f9;
+            margin: 6px 0 0;
+            font-size: 1.15rem;
+            font-weight: 700;
         }
 
-        .signup-header p {
+        .signup-header .signup-subtitle {
             color: #94a3b8;
             margin: 8px 0 0;
-            font-size: 0.95rem;
+            font-size: 0.92rem;
+            font-weight: 400;
         }
 
         .form-group {
@@ -160,8 +173,9 @@
     <div class="signup-container">
         <div class="signup-header">
             <img src="{{ url_for('static', filename='logo.png') }}" alt="CipherSync">
+            <p class="signup-welcome">Welcome!</p>
             <h1>Create Account</h1>
-            <p>Sign up first before signing in.</p>
+            <p class="signup-subtitle">Your username will appear on the dashboard after sign up.</p>
         </div>
 
         {% if error %}

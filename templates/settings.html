@@ -49,13 +49,17 @@
         </aside>
 
         <div class="main-wrapper">
-            <header class="top-nav{% if section == 'account' %} top-nav-change-password{% endif %}">
+            <header class="top-nav{% if section == 'account' %} top-nav-change-password{% elif section == 'backup' %} top-nav-title-only{% endif %}">
                 {% if section == 'account' %}
                 <div class="top-nav-password-title">Change Password</div>
                 {% elif section == 'security' %}
                 <div class="top-nav-page-title">Security Settings</div>
                 {% elif section == 'users' %}
                 <div class="top-nav-page-title">User Management Settings</div>
+                {% elif section == 'backup' %}
+                <div class="page-title-section">
+                    <h1>Backup &amp; Logs</h1>
+                </div>
                 {% else %}
                 <div class="top-nav-left">
                     <button id="sidebarToggle" class="sidebar-toggle">
@@ -75,7 +79,7 @@
             </header>
 
             <main class="content-area{% if section == 'account' %} change-password-page{% endif %}{% if section == 'security' %} security-settings-page{% endif %}{% if section == 'users' %} users-settings-page{% endif %}{% if section == 'backup' %} backup-settings-page{% endif %}">
-                {% if section != 'account' and section != 'security' and section != 'users' %}
+                {% if section != 'account' and section != 'security' and section != 'users' and section != 'backup' %}
                 <div class="page-title-section">
                     <h1>
                         {% if section == 'security' %} Security Settings

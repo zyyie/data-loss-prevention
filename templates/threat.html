@@ -15,21 +15,61 @@
             margin-bottom: 30px;
         }
 
-        /* Force exact Policy Management navbar sizing on this page */
-        .top-nav.top-nav-title-only {
-            height: 110px !important;
-            padding: 0 !important;
+        /* Larger sidebar + top navbar on Threat Analytics */
+        body.threat-analytics-page .sidebar {
+            width: 340px;
         }
 
-        .top-nav.top-nav-title-only .page-title-section {
-            margin: 0 !important;
+        body.threat-analytics-page .sidebar-header {
+            padding: 36px 28px;
         }
 
-        .top-nav.top-nav-title-only .page-title-section h1 {
+        body.threat-analytics-page .logo-text {
+            font-size: 1.7rem;
+            letter-spacing: 0.4px;
+        }
+
+        body.threat-analytics-page .sidebar-nav li a,
+        body.threat-analytics-page .sidebar-footer li a {
+            padding: 20px 32px;
+            font-size: 1.08rem;
+            gap: 18px;
+        }
+
+        body.threat-analytics-page .sidebar-nav li a i,
+        body.threat-analytics-page .sidebar-footer li a i {
+            font-size: 1.3rem;
+            width: 26px;
+        }
+
+        body.threat-analytics-page .main-wrapper {
+            width: 100%;
+        }
+
+        body.threat-analytics-page .top-nav.top-nav-title-only {
+            width: 100% !important;
+            min-height: 115px !important;
+            height: 115px !important;
+            padding: 0 32px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            box-sizing: border-box;
+        }
+
+        body.threat-analytics-page .top-nav.top-nav-title-only .page-title-section {
             margin: 0 !important;
-            font-size: 1.8rem !important;
+            width: 100%;
+            text-align: center;
+        }
+
+        body.threat-analytics-page .top-nav.top-nav-title-only .page-title-section h1 {
+            margin: 0 !important;
+            font-size: 2rem !important;
             font-weight: 700 !important;
             color: #ffffff !important;
+            letter-spacing: 0.4px;
+            line-height: 1.15;
         }
 
         .middle-grid {
@@ -146,7 +186,7 @@
     </style>
 </head>
 
-<body>
+<body class="threat-analytics-page">
     <div class="app-container">
         <aside class="sidebar">
             <div class="sidebar-header">

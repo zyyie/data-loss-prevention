@@ -1,0 +1,5 @@
+.env
+__pycache__/
+*.pyc
+secured_uploads/
+downloads/*.pdf
